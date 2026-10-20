@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Lektra</title>
+<meta name="description" content="Plan your week, track lectures, sections, labs, quizzes and deadlines. Works fully offline.">
+<meta name="theme-color" content="#161616">
+<meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lektra">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="assets/icon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app"><div id="screen">
+  <div class="handle"></div>
+  <button class="round top" id="bToday" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><circle cx="11" cy="11" r="1.7" fill="currentColor" stroke="none"/><path d="M16 16l4 4"/></svg></button>
+  <button class="round top plus" id="bAdd" aria-label="Add lecture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+  <div id="main"></div>
+  <div id="bar">
+    <div class="plans"><input id="plans" type="text" placeholder="What are your plans?" autocomplete="off" enterkeyhint="send"><button class="mic" id="mic" aria-label="Voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button></div>
+    <button class="round" id="bCal" aria-label="Calendar"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="4.5" fill="currentColor"/><rect x="7.2" y="2" width="2.2" height="4.5" rx="1.1" fill="currentColor"/><rect x="14.6" y="2" width="2.2" height="4.5" rx="1.1" fill="currentColor"/><g fill="#1b1b1b"><circle cx="8" cy="11" r="1.3"/><circle cx="12" cy="11" r="1.3"/><circle cx="16" cy="11" r="1.3"/><circle cx="8" cy="15.5" r="1.3"/><circle cx="12" cy="15.5" r="1.3"/><circle cx="16" cy="15.5" r="1.3"/></g></svg></button>
+    <button class="round" id="bSub" aria-label="Subjects"><svg viewBox="0 0 24 24"><rect x="3" y="3.5" width="18" height="5.5" rx="2" fill="currentColor"/><rect x="4.5" y="10" width="15" height="10.5" rx="3" fill="currentColor"/><rect x="9" y="13" width="6" height="2.2" rx="1.1" fill="#1b1b1b"/></svg></button>
+    <button class="round" id="bSet" aria-label="Settings"><svg viewBox="0 0 24 24"><path d="M12 2.8l8 4.6v9.2l-8 4.6-8-4.6V7.4z" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="#1b1b1b"/></svg></button>
+  </div>
+</div>
+<div id="modal"><div class="box" id="box"></div></div>
+<div id="toast"></div>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/state.js"></script>
+<script src="js/modal.js"></script>
+<script src="js/calendar.js"></script>
+<script src="js/subjects.js"></script>
+<script src="js/search.js"></script>
+<script src="js/voice.js"></script>
+<script src="js/reminders.js"></script>
+<script src="js/scan.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
