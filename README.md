@@ -49,15 +49,15 @@ delete your data when the device runs low on space.
 
 ### Calendar
 - **Month grid** with Sunday–Saturday columns, adjacent-month days dimmed, and today's
-  cell outlined in white.
-- **Each day shows its content inline** — up to 5 lines per cell: dated entries render as
-  a coloured subject name plus a type/note line, and weekly classes render grouped by
-  subject with `Lec` / `Sec` / `Lab` tags and the room.
-- **Per-type colours** for the dated entries (quiz, deadline, midterm, final) so a glance
-  tells you what kind of day it is.
+  date in a quiet white pill.
+- **Each day shows its content inline** — up to 5 lines per cell: every entry starts with a
+  small dot in the subject's colour, then a neutral subject name and a muted type/note line.
+  Weekly classes render grouped by subject with `Lec` / `Sec` / `Lab` tags and the room.
+  Subject colour stays in the dot, so the grid itself remains calm and near-monochrome.
 - **Month navigation** two ways: the `‹` `›` arrow zones, or **swipe left/right** on the grid.
-- **Subject filter chips** under the grid (one per subject, with its colour dot, plus
-  "All") that filter the whole calendar down to a single subject.
+- **A single-line subject filter rail** under the grid — "All" plus one entry per subject,
+  each with its colour dot and count. The selected filter is a white pill; the rail scrolls
+  sideways instead of stacking into rows of loud coloured labels.
 - **Auto-jump**: add a quiz for next March and the calendar flips to that month for you.
 
 ### Entries

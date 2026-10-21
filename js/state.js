@@ -2,7 +2,8 @@
 var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 var WEEK = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 var SHORT = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
-var PALETTE = ["#ff3b30","#34c759","#0a84ff","#ff9f0a","#bf5af2","#64d2ff"];
+// Muted, low-glare accents that sit quietly on the dark surface.
+var PALETTE = ["#e0786a","#7fb48e","#6f9fd8","#d0a55e","#a98bd4","#5fb7bd"];
 
 // Default "remind me this many minutes before" per group (see js/reminders.js)
 var REMIND_DEFAULT_LEAD = { classes: 10, quiz: 1440, deadline: 4320, exam: 1440 };

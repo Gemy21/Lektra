@@ -10,7 +10,7 @@ function cellLines(date, dow) {
   state.events.filter(function (e) { return e.date === day && (!filterId || e.subjectId === filterId); })
     .forEach(function (e) {
       lines.push({ color: colorOf(e.subjectId), text: subjectName(e.subjectId), cls: "" });
-      lines.push({ text: kindLabel(e.kind) + (e.note ? " · " + e.note : ""), cls: "tag", color: colorOf(e.subjectId) });
+      lines.push({ text: kindLabel(e.kind) + (e.note ? " · " + e.note : ""), cls: "tag" });
     });
   var list = lecturesOn(dow, true);
   var done = {};
@@ -76,26 +76,24 @@ function renderCalendar() {
     if (n < 1 || n > total) { html += '<div class="cell blank"></div>'; continue; }
     var isToday = y === today.getFullYear() && m === today.getMonth() && n === today.getDate();
     var lines = cellLines(new Date(y, m, n), i % 7);
-    var tint = lines.length ? lines[0].color : "";       // first entry colours the whole cell
-    html += '<button class="cell' + (isToday ? " today" : "") + (tint ? " has" : "") + '"' +
-      (tint ? ' style="--c:' + tint + ';background:linear-gradient(0deg,' + tint + '26,' + tint + '26),rgba(255,255,255,.06)"' : "") +
+    html += '<button class="cell' + (isToday ? " today" : "") + (lines.length ? " has" : "") + '"' +
       ' data-d="' + n + '"><span>' + n + "</span>";
     lines.forEach(function (ln) {
-      if (ln.cls === "") html += '<i class="ev" style="color:' + ln.color + '"><b style="background:' + ln.color + '"></b>' + esc(ln.text) + "</i>";
-      else html += '<i class="ev ' + ln.cls + '"' + (ln.color ? ' style="color:' + ln.color + '"' : "") + ">" + esc(ln.text) + "</i>";
+      if (ln.cls === "") html += '<i class="ev"><b style="background:' + ln.color + '"></b>' + esc(ln.text) + "</i>";
+      else html += '<i class="ev ' + ln.cls + '">' + esc(ln.text) + "</i>";
     });
     html += "</button>";
   }
-  html += '</div><div class="chips"><button class="chip' + (filterId ? "" : " on") + '" data-f="">All<span class="n">' +
+  html += '</div><div class="filters"><span class="filters__label" aria-hidden="true">Filter</span><div class="chips">' +
+    '<button class="chip' + (filterId ? "" : " on") + '" data-f="">All<span class="n">' +
     (eventsInMonth(null) + lecturesInMonth(null)) + "</span></button>";
   state.subjects.forEach(function (s) {
     var c = colorOf(s.id);
-    html += '<button class="chip sub' + (filterId === s.id ? " on" : "") + '" data-f="' + s.id +
-      '" style="--tint:linear-gradient(0deg,' + c + '26,' + c + '26),rgba(255,255,255,.07);--on:linear-gradient(0deg,' + c + '4d,' + c + '4d),rgba(255,255,255,.07);border-color:' + c + '66">' +
+    html += '<button class="chip' + (filterId === s.id ? " on" : "") + '" data-f="' + s.id + '">' +
       '<i style="background:' + c + '"></i>' + esc(s.name) +
       '<span class="n">' + (eventsInMonth(s.id) + lecturesInMonth(s.id)) + "</span></button>";
   });
-  html += "</div>";
+  html += "</div></div>";
 
   // away from the current month -> floating "This Month" pill that jumps back
   if (y !== today.getFullYear() || m !== today.getMonth()) {
@@ -122,6 +120,13 @@ function renderCalendar() {
   main.querySelectorAll(".chip").forEach(function (b) {
     b.onclick = function () { filterId = b.getAttribute("data-f") || null; render(); };
   });
+  // Keep the chosen subject in view: the rail is single-line and never wraps.
+  var rail = main.querySelector(".filters .chips");
+  var activeChip = rail && rail.querySelector(".chip.on");
+  if (rail && activeChip) {
+    var target = activeChip.getBoundingClientRect().left - rail.getBoundingClientRect().left + rail.scrollLeft;
+    rail.scrollLeft = Math.max(0, target - (rail.clientWidth - activeChip.offsetWidth) / 2);
+  }
 }
 
 // ===== Year screen (tap the month name) =====
@@ -225,8 +230,7 @@ function renderDay() {
   if (daySubs.length) {
     html += '<div class="dchips">';
     daySubs.forEach(function (sb) {
-      html += '<button class="dchip" data-sub="' + sb.id + '" style="background:' + sb.color + '1f;border-color:' + sb.color +
-        '66;color:' + sb.color + '"><i style="background:' + sb.color + '"></i>' + esc(sb.name) +
+      html += '<button class="dchip" data-sub="' + sb.id + '"><i style="background:' + sb.color + '"></i>' + esc(sb.name) +
         '<span class="n">+' + sb.n + "</span></button>";
     });
     html += "</div>";
