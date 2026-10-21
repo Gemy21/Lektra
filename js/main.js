@@ -21,6 +21,7 @@ var SET_ICON = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
   x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>',
   globe: '<svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18"/></svg>',
+  sun: '<svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
   bell: '<svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
   backup: '<svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10"/><path d="M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>',
   more: '<svg class="mi" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>'
@@ -43,6 +44,7 @@ var SET_PAGES = {
     return setHead("Settings") +
       '<div class="menu">' +
       setRow("lang", SET_ICON.globe, "Voice language") +
+      setRow("appearance", SET_ICON.sun, "Appearance") +
       setRow("reminders", SET_ICON.bell, "Reminders") +
       setRow("backup", SET_ICON.backup, "Backup &amp; restore") +
       setRow("more", SET_ICON.more, "More") +
@@ -55,6 +57,17 @@ var SET_PAGES = {
       '<button class="chip' + (state.lang === "ar" ? " on" : "") + '" data-l="ar">العربية (مصر)</button>' +
       '<button class="chip' + (state.lang === "en" ? " on" : "") + '" data-l="en">English</button></div>' +
       '<div class="muted" style="margin-top:4cqw">Used when Lektra reads reminders out loud and in the voice assistant. The app text stays in English.</div>';
+  },
+  appearance: function () {
+    var opts = [["dark", "Dark"], ["light", "Light"], ["system", "System"]];
+    return setHead("Appearance", true) +
+      '<div class="chips" style="margin-top:4cqw">' +
+      opts.map(function (o) {
+        return '<button class="chip' + (state.theme === o[0] ? " on" : "") + '" data-th="' + o[0] +
+          '" aria-pressed="' + (state.theme === o[0]) + '">' + o[1] + "</button>";
+      }).join("") +
+      "</div>" +
+      '<div class="muted" style="margin-top:4cqw">Pick a light or dark look, or follow your phone\'s appearance setting. Dark stays the default.</div>';
   },
   reminders: function () {
     return setHead("Reminders", true) +
@@ -117,6 +130,21 @@ function settingsPage(page) {
     return;
   }
 
+  if (page === "appearance") {
+    box.querySelectorAll("[data-th]").forEach(function (b) {
+      b.onclick = function () {
+        var next = b.getAttribute("data-th");
+        if (state.theme === next) return;
+        state.theme = next;
+        save();
+        applyTheme();
+        render();
+        settingsPage("appearance");
+      };
+    });
+    return;
+  }
+
   if (page === "reminders") {
     var refreshRemStatus = function () {
       document.getElementById("remStatus").textContent = remindStatusText();
@@ -172,6 +200,7 @@ function settingsPage(page) {
 
 function clearAll() {
   state = normalizeState({});
+  applyTheme();
   try { localStorage.removeItem(STATE_KEY); } catch (e) {}
   var jobs = [idbPut("kv", state, STATE_KEY).catch(function () {})];
   if (typeof idbAll === "function") {
@@ -208,3 +237,15 @@ loadStateFromDB().then(function (hadStored) {
   if (hadStored) render();  // IndexedDB is the source of truth once it loads
   initReminders();          // start the reminder ticker + catch up on anything missed
 }).catch(function () { initReminders(); });
+
+// If the saved choice is "System", follow appearance changes while the app is open.
+if (window.matchMedia) {
+  var themeQuery = window.matchMedia("(prefers-color-scheme: light)");
+  var onThemeQuery = function () {
+    if (state.theme !== "system") return;
+    applyTheme();
+    render();
+  };
+  if (themeQuery.addEventListener) themeQuery.addEventListener("change", onThemeQuery);
+  else if (themeQuery.addListener) themeQuery.addListener(onThemeQuery);
+}

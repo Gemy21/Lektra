@@ -4,6 +4,8 @@ var WEEK = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturda
 var SHORT = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
 // Muted, low-glare accents that sit quietly on the dark surface.
 var PALETTE = ["#e0786a","#7fb48e","#6f9fd8","#d0a55e","#a98bd4","#5fb7bd"];
+// The same accents, darkened a little so they hold up against warm paper.
+var LIGHT_PALETTE = ["#b85c4d","#4f8562","#3d72ad","#a3782b","#7f5fae","#2f848b"];
 
 // Default "remind me this many minutes before" per group (see js/reminders.js)
 var REMIND_DEFAULT_LEAD = { classes: 10, quiz: 1440, deadline: 4320, exam: 1440 };
@@ -20,6 +22,7 @@ try {
   if (saved) state = normalizeState(JSON.parse(saved));
 } catch (e) {}
 state = normalizeState(state);   // the built-in default needs normalising too
+applyTheme();
 
 // Make sure a state object loaded from disk/storage always has the shape the app expects.
 function normalizeState(s) {
@@ -28,6 +31,7 @@ function normalizeState(s) {
   if (!Array.isArray(s.lectures)) s.lectures = [];
   if (!Array.isArray(s.events)) s.events = [];
   if (s.lang !== "en" && s.lang !== "ar") s.lang = "ar";
+  if (s.theme !== "light" && s.theme !== "system") s.theme = "dark";
   s.version = 2;
   s.subjects.forEach(function (sub) {
     if (!Array.isArray(sub.files)) sub.files = [];
@@ -60,10 +64,29 @@ function save() {
 function loadStateFromDB() {
   if (typeof idbGet !== "function") return Promise.resolve(false);
   return idbGet("kv", STATE_KEY).then(function (stored) {
-    if (stored) { state = normalizeState(stored); return true; }
+    if (stored) { state = normalizeState(stored); applyTheme(); return true; }
     idbPut("kv", state, STATE_KEY).catch(function () {}); // first run: migrate localStorage copy
     return false;
   }).catch(function () { return false; });
+}
+
+// Resolve the saved preference ("dark", "light" or "system") to the theme that
+// should actually be painted, then keep browser chrome in sync with it.
+function resolvedTheme() {
+  if (state.theme === "system") {
+    return (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark";
+  }
+  return state.theme === "light" ? "light" : "dark";
+}
+
+function applyTheme() {
+  var theme = resolvedTheme();
+  document.documentElement.setAttribute("data-theme", theme);
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", theme === "light" ? "#f3f1ec" : "#161616");
+  var status = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+  if (status) status.setAttribute("content", theme === "light" ? "default" : "black-translucent");
+  return theme;
 }
 
 var today = new Date();
@@ -87,8 +110,10 @@ function fmtSize(bytes) {
 }
 
 function colorOf(id) {
-  for (var i = 0; i < state.subjects.length; i++) if (state.subjects[i].id === id) return PALETTE[i % PALETTE.length];
-  return "#888";
+  var light = document.documentElement.getAttribute("data-theme") === "light";
+  var palette = light ? LIGHT_PALETTE : PALETTE;
+  for (var i = 0; i < state.subjects.length; i++) if (state.subjects[i].id === id) return palette[i % palette.length];
+  return light ? "#8a8780" : "#888";
 }
 
 // Folder icon for subject rows and search results - same stroke style as the

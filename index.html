@@ -1,16 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Lektra</title>
 <meta name="description" content="Plan your week, track lectures, sections, labs, quizzes and deadlines. Works fully offline.">
 <meta name="theme-color" content="#161616">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="dark light">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Lektra">
+<script>
+(function () {
+  var theme = "dark";
+  try {
+    var saved = JSON.parse(localStorage.getItem("campus") || "{}");
+    var pref = saved && saved.theme;
+    if (pref === "light" || pref === "dark" || pref === "system") {
+      theme = pref === "system"
+        ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+        : pref;
+    }
+  } catch (e) {}
+  document.documentElement.setAttribute("data-theme", theme);
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", theme === "light" ? "#f3f1ec" : "#161616");
+  var status = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+  if (status) status.setAttribute("content", theme === "light" ? "default" : "black-translucent");
+})();
+</script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="assets/icon.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">

@@ -129,6 +129,7 @@ function importData(file) {
     var s = parsed && parsed.state ? parsed.state : parsed;
     if (!s || !Array.isArray(s.subjects)) throw new Error("Not a Lektra backup");
     state = normalizeState(s);
+    applyTheme();
     save(); render();
     toast("Data restored");
   });

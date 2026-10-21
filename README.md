@@ -49,15 +49,15 @@ delete your data when the device runs low on space.
 
 ### Calendar
 - **Month grid** with Sunday–Saturday columns, adjacent-month days dimmed, and today's
-  date in a quiet white pill.
+  date in a quiet high-contrast pill.
 - **Each day shows its content inline** — up to 5 lines per cell: every entry starts with a
   small dot in the subject's colour, then a neutral subject name and a muted type/note line.
   Weekly classes render grouped by subject with `Lec` / `Sec` / `Lab` tags and the room.
   Subject colour stays in the dot, so the grid itself remains calm and near-monochrome.
 - **Month navigation** two ways: the `‹` `›` arrow zones, or **swipe left/right** on the grid.
 - **A single-line subject filter rail** under the grid — "All" plus one entry per subject,
-  each with its colour dot and count. The selected filter is a white pill; the rail scrolls
-  sideways instead of stacking into rows of loud coloured labels.
+  each with its colour dot and count. The selected filter is a quiet high-contrast pill;
+  the rail scrolls sideways instead of stacking into rows of loud coloured labels.
 - **Auto-jump**: add a quiz for next March and the calendar flips to that month for you.
 
 ### Entries
@@ -183,6 +183,8 @@ Lektra nudges you before classes and deadlines.
 > is a browser restriction, not a bug, and the only real fix is a native app.
 
 ### Settings and data
+- **Appearance** — Dark, Light, or System. Dark stays the default; Light is the same quiet
+  layout on warm paper, and System follows the phone's appearance setting.
 - **Voice language** — العربية (مصر) or English, which sets the speech recogniser locale.
 - **Storage info** — how many files you have stored offline and roughly how much space
   they use, read live from the browser's Storage API.
@@ -199,7 +201,7 @@ Lektra nudges you before classes and deadlines.
 - Works **fully offline** after the first load, including opening saved lecture files.
 
 ### Interface polish
-- **Dark by default**, designed phone-first.
+- **Dark by default**, with Light and System options under Settings → Appearance.
 - On a desktop it renders inside a **phone frame** (rounded corners, bezel) once the window
   is wider than 560px, so it looks like the device it's meant for.
 - **Container queries** keep every element scaling with the app's own width rather than the
@@ -225,7 +227,7 @@ no `npm install`, and no build step** — the files you see are the files that r
 - **Container queries** (`container-type: inline-size` + `cqw` units) for device-relative sizing
 - `env(safe-area-inset-*)` for notched displays
 - `100dvh` with a `@supports` fallback for mobile browser toolbars
-- `color-scheme: dark` so native date/time pickers match the theme
+- `color-scheme` switches between dark and light so native date/time pickers match the theme
 
 **Web platform APIs used**
 | API | Used for |
@@ -308,7 +310,7 @@ Lektra/
 ├── dev-server.py       Static server with Cache-Control: no-store (no stale edits)
 ├── README.md
 ├── css/
-│   └── style.css       All styling: dark theme, grid, container queries
+│   └── style.css       All styling: light/dark themes, grid, container queries
 ├── js/
 │   ├── db.js           IndexedDB: state store, file store, backup/restore
 │   ├── state.js        App state, helpers, entry types, persistence
