@@ -6,7 +6,7 @@
 
 **A quiet, offline-first study planner for university students.**
 
-[**Open the app →**](https://ahmedkamalrezk.github.io/Lektra/)
+[**Open the app →**](https://gemy21.github.io/Lektra/)
 
 </div>
 
