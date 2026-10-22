@@ -1,6 +1,6 @@
 <div align="center">
 
-![Lektra](assets/banner.png)
+![Lektra — Your semester in focus](assets/banner.gif)
 
 **Plan your study week. Track lectures, labs, quizzes and deadlines. Works fully offline on your phone.**
 
@@ -249,7 +249,7 @@ no `npm install`, and no build step** — the files you see are the files that r
 - **GitHub Pages** — free HTTPS hosting (HTTPS is a hard requirement for installing a PWA)
 - **Git** for version control, **GitHub CLI** for publishing
 - **Python `http.server`** (`serve.ps1` → `dev-server.py`) for local development on `localhost`, with `Cache-Control: no-store` so edits show up on reload
-- Icons and the README banner were generated programmatically with **.NET `System.Drawing`**
+- Icons were generated programmatically with **.NET `System.Drawing`**
 
 **Requirements:** Chrome/Edge 105+, Safari 16+, or Firefox 110+ (container queries and
 service workers are the strictest requirements). No install, no runtime dependencies.
@@ -328,7 +328,7 @@ Lektra/
     ├── icon-512.png           PWA icon (install requirement)
     ├── icon-maskable-512.png  Adaptive icon for Android launchers
     ├── apple-touch-icon.png   iOS home-screen icon
-    └── banner.png             This README's banner
+    └── banner.gif             This README's animated banner
 ```
 
 ---
