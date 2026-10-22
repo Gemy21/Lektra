@@ -529,3 +529,92 @@ html[data-theme="light"] .kseg button.on{background:var(--ink);color:#fff}
   html[data-theme="light"] body{background:var(--bg)}
   html[data-theme="light"] #app{border-color:#d7d3cb}
 }
+
+/* ===== Original calendar colours =====
+   The quiet redesign stays the default. This optional mode brings back the
+   original design's bright subject-tinted cells, labels and filter chips. */
+html[data-colors="original"] .cell{
+  border-width:.6cqw;
+  border-color:transparent;
+}
+html[data-colors="original"] .cell.today{
+  border-color:#fff;
+}
+html[data-colors="original"] .cell.has,
+html[data-colors="original"] .cell.today.has{
+  border-color:var(--c);
+}
+html[data-theme="light"][data-colors="original"] .cell.today:not(.has){
+  border-color:rgba(28,28,31,.38);
+}
+html[data-colors="original"] .cell.blank{
+  background:none;
+  box-shadow:none;
+  border-color:transparent;
+}
+html[data-colors="original"] .cell .ev{
+  color:var(--ev,#cfcfd4);
+}
+html[data-colors="original"] .cell .ev.tag{
+  color:var(--ev,#85858c);
+  opacity:.72;
+}
+html[data-colors="original"] .cell .ev.pl{
+  color:#6f6f6f;
+}
+html[data-colors="original"] .cell .ev b{
+  border-radius:.4cqw;
+}
+
+html[data-theme="light"][data-colors="original"] .cell .ev{
+  color:var(--ev,#46444b);
+}
+html[data-theme="light"][data-colors="original"] .cell .ev.tag{
+  color:var(--ev,#87837b);
+  opacity:.78;
+}
+html[data-theme="light"][data-colors="original"] .cell .ev.pl{
+  color:#9a968e;
+}
+
+html[data-colors="original"] .filters .chip.sub{
+  background:var(--tint);
+  border-color:var(--edge);
+  color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14);
+}
+html[data-colors="original"] .filters .chip.sub.on{
+  background:var(--on);
+  border-color:var(--edge);
+  color:#fff;
+  box-shadow:0 1.2cqw 3.4cqw rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.2);
+}
+html[data-colors="original"] .filters .chip.sub:active{
+  background:var(--on);
+}
+html[data-colors="original"] .filters .chip.sub .n{
+  color:rgba(255,255,255,.72);
+}
+html[data-colors="original"] .filters .chip.sub.on .n{
+  color:rgba(255,255,255,.86);
+}
+
+html[data-theme="light"][data-colors="original"] .filters .chip.sub{
+  color:#29262d;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
+}
+html[data-theme="light"][data-colors="original"] .filters .chip.sub.on{
+  color:#17161a;
+  box-shadow:0 1.2cqw 3.4cqw rgba(28,28,31,.14),inset 0 1px 0 rgba(255,255,255,.9);
+}
+html[data-theme="light"][data-colors="original"] .filters .chip.sub .n{
+  color:rgba(28,28,31,.6);
+}
+html[data-theme="light"][data-colors="original"] .filters .chip.sub.on .n{
+  color:rgba(28,28,31,.78);
+}
+
+html[data-colors="original"] .dchip .n{
+  color:inherit;
+  opacity:.74;
+}

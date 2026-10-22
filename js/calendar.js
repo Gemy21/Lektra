@@ -1,4 +1,37 @@
 // ===== Calendar =====
+function lightCalendarTheme() {
+  return document.documentElement.getAttribute("data-theme") === "light";
+}
+
+function calendarCellTint(color) {
+  var base = lightCalendarTheme() ? "rgba(255,255,255,.66)" : "rgba(255,255,255,.06)";
+  return "linear-gradient(0deg," + color + "26," + color + "26)," + base;
+}
+
+function calendarChipTint(color, alpha) {
+  var base = lightCalendarTheme() ? "rgba(255,255,255,.62)" : "rgba(255,255,255,.07)";
+  return "linear-gradient(0deg," + color + alpha + "," + color + alpha + ")," + base;
+}
+
+function calendarCellStyle(color) {
+  if (!originalCalendarColors() || !color) return "";
+  return ' style="--c:' + color + ";background:" + calendarCellTint(color) + '"';
+}
+
+function calendarFilterStyle(color) {
+  if (!originalCalendarColors()) return "";
+  var edge = color + (lightCalendarTheme() ? "99" : "66");
+  return ' style="--tint:' + calendarChipTint(color, "26") +
+    ";--on:" + calendarChipTint(color, "4d") + ";--edge:" + edge + '"';
+}
+
+function calendarDayChipStyle(color) {
+  if (!originalCalendarColors()) return "";
+  var light = lightCalendarTheme();
+  return ' style="background:' + color + (light ? "24" : "1f") +
+    ";border-color:" + color + (light ? "99" : "66") + ";color:" + color + '"';
+}
+
 function lecturesOn(dow, useFilter) {
   return state.lectures.filter(function (l) { return l.weekday === dow && (!useFilter || !filterId || l.subjectId === filterId); })
     .sort(function (a, b) { return a.time < b.time ? -1 : 1; });
@@ -9,15 +42,15 @@ function cellLines(date, dow) {
   var day = iso(date);
   state.events.filter(function (e) { return e.date === day && (!filterId || e.subjectId === filterId); })
     .forEach(function (e) {
-      lines.push({ color: colorOf(e.subjectId), text: subjectName(e.subjectId), cls: "" });
-      lines.push({ text: kindLabel(e.kind) + (e.note ? " · " + e.note : ""), cls: "tag" });
+      lines.push({ color: calendarColorOf(e.subjectId), text: subjectName(e.subjectId), cls: "" });
+      lines.push({ color: calendarColorOf(e.subjectId), text: kindLabel(e.kind) + (e.note ? " · " + e.note : ""), cls: "tag" });
     });
   var list = lecturesOn(dow, true);
   var done = {};
   list.forEach(function (l) {
     if (done[l.subjectId]) return;
     done[l.subjectId] = true;
-    lines.push({ color: colorOf(l.subjectId), text: subjectName(l.subjectId), cls: "" });
+    lines.push({ color: calendarColorOf(l.subjectId), text: subjectName(l.subjectId), cls: "" });
     list.filter(function (x) { return x.subjectId === l.subjectId; }).forEach(function (x) {
       lines.push({ text: ((TAGS[x.kind] || "Lec") + " " + (x.place || "")).trim(), cls: "pl" });
     });
@@ -76,11 +109,13 @@ function renderCalendar() {
     if (n < 1 || n > total) { html += '<div class="cell blank"></div>'; continue; }
     var isToday = y === today.getFullYear() && m === today.getMonth() && n === today.getDate();
     var lines = cellLines(new Date(y, m, n), i % 7);
+    var tint = lines.length ? lines[0].color : "";
     html += '<button class="cell' + (isToday ? " today" : "") + (lines.length ? " has" : "") + '"' +
-      ' data-d="' + n + '"><span>' + n + "</span>";
+      calendarCellStyle(tint) + ' data-d="' + n + '"><span>' + n + "</span>";
     lines.forEach(function (ln) {
-      if (ln.cls === "") html += '<i class="ev"><b style="background:' + ln.color + '"></b>' + esc(ln.text) + "</i>";
-      else html += '<i class="ev ' + ln.cls + '">' + esc(ln.text) + "</i>";
+      var evStyle = ln.color ? ' style="--ev:' + ln.color + '"' : "";
+      if (ln.cls === "") html += '<i class="ev"' + evStyle + '><b style="background:' + ln.color + '"></b>' + esc(ln.text) + "</i>";
+      else html += '<i class="ev ' + ln.cls + '"' + evStyle + ">" + esc(ln.text) + "</i>";
     });
     html += "</button>";
   }
@@ -88,9 +123,9 @@ function renderCalendar() {
     '<button class="chip' + (filterId ? "" : " on") + '" data-f="">All<span class="n">' +
     (eventsInMonth(null) + lecturesInMonth(null)) + "</span></button>";
   state.subjects.forEach(function (s) {
-    var c = colorOf(s.id);
-    html += '<button class="chip' + (filterId === s.id ? " on" : "") + '" data-f="' + s.id + '">' +
-      '<i style="background:' + c + '"></i>' + esc(s.name) +
+    var c = calendarColorOf(s.id);
+    html += '<button class="chip sub' + (filterId === s.id ? " on" : "") + '" data-f="' + s.id + '"' +
+      calendarFilterStyle(c) + '><i style="background:' + c + '"></i>' + esc(s.name) +
       '<span class="n">' + (eventsInMonth(s.id) + lecturesInMonth(s.id)) + "</span></button>";
   });
   html += "</div></div>";
@@ -193,14 +228,14 @@ function dayItems(date) {
   state.events.forEach(function (e) {
     if (e.date !== key) return;
     out.push({
-      color: colorOf(e.subjectId), title: subjectName(e.subjectId), sid: e.subjectId,
+      color: calendarColorOf(e.subjectId), title: subjectName(e.subjectId), sid: e.subjectId,
       sub: kindLabel(e.kind) + (e.note ? " · " + e.note : ""),
       time: e.time, kind: "ev", id: e.id
     });
   });
   lecturesOn(date.getDay(), false).forEach(function (l) {
     out.push({
-      color: colorOf(l.subjectId), title: subjectName(l.subjectId), sid: l.subjectId,
+      color: calendarColorOf(l.subjectId), title: subjectName(l.subjectId), sid: l.subjectId,
       sub: kindLabel(l.kind) + (l.place ? " · " + l.place : ""),
       time: l.time, kind: "lec", id: l.id
     });
@@ -230,7 +265,7 @@ function renderDay() {
   if (daySubs.length) {
     html += '<div class="dchips">';
     daySubs.forEach(function (sb) {
-      html += '<button class="dchip" data-sub="' + sb.id + '"><i style="background:' + sb.color + '"></i>' + esc(sb.name) +
+      html += '<button class="dchip" data-sub="' + sb.id + '"' + calendarDayChipStyle(sb.color) + '><i style="background:' + sb.color + '"></i>' + esc(sb.name) +
         '<span class="n">+' + sb.n + "</span></button>";
     });
     html += "</div>";
@@ -337,7 +372,7 @@ function addLecture(dow, pre) {
   }
   function subjChips() {
     return state.subjects.map(function (s) {
-      return '<button class="chip' + (s.id === subId ? " on" : "") + '" data-s="' + s.id + '"><i style="background:' + colorOf(s.id) + '"></i>' + esc(s.name) + "</button>";
+      return '<button class="chip' + (s.id === subId ? " on" : "") + '" data-s="' + s.id + '"><i style="background:' + calendarColorOf(s.id) + '"></i>' + esc(s.name) + "</button>";
     }).join("") + '<button class="chip addchip" data-newsub>+ New</button>';
   }
 

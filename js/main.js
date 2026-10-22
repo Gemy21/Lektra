@@ -60,14 +60,24 @@ var SET_PAGES = {
   },
   appearance: function () {
     var opts = [["dark", "Dark"], ["light", "Light"], ["system", "System"]];
+    var colors = [["quiet", "Quiet"], ["original", "Original"]];
     return setHead("Appearance", true) +
-      '<div class="chips" style="margin-top:4cqw">' +
+      "<label>Theme</label>" +
+      '<div class="chips">' +
       opts.map(function (o) {
         return '<button class="chip' + (state.theme === o[0] ? " on" : "") + '" data-th="' + o[0] +
           '" aria-pressed="' + (state.theme === o[0]) + '">' + o[1] + "</button>";
       }).join("") +
       "</div>" +
-      '<div class="muted" style="margin-top:4cqw">Pick a light or dark look, or follow your phone\'s appearance setting. Dark stays the default.</div>';
+      '<div class="muted" style="margin-top:2.5cqw">Pick a light or dark look, or follow your phone\'s appearance setting. Dark stays the default.</div>' +
+      "<label>Calendar colors</label>" +
+      '<div class="chips">' +
+      colors.map(function (o) {
+        return '<button class="chip' + (state.calendarColors === o[0] ? " on" : "") + '" data-col="' + o[0] +
+          '" aria-pressed="' + (state.calendarColors === o[0]) + '">' + o[1] + "</button>";
+      }).join("") +
+      "</div>" +
+      '<div class="muted" style="margin-top:2.5cqw">Quiet keeps the calendar monochrome. Original brings back the colored cells, labels and filters.</div>';
   },
   reminders: function () {
     return setHead("Reminders", true) +
@@ -136,6 +146,17 @@ function settingsPage(page) {
         var next = b.getAttribute("data-th");
         if (state.theme === next) return;
         state.theme = next;
+        save();
+        applyTheme();
+        render();
+        settingsPage("appearance");
+      };
+    });
+    box.querySelectorAll("[data-col]").forEach(function (b) {
+      b.onclick = function () {
+        var next = b.getAttribute("data-col");
+        if (state.calendarColors === next) return;
+        state.calendarColors = next;
         save();
         applyTheme();
         render();

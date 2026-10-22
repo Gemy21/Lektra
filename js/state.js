@@ -6,6 +6,11 @@ var SHORT = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
 var PALETTE = ["#e0786a","#7fb48e","#6f9fd8","#d0a55e","#a98bd4","#5fb7bd"];
 // The same accents, darkened a little so they hold up against warm paper.
 var LIGHT_PALETTE = ["#b85c4d","#4f8562","#3d72ad","#a3782b","#7f5fae","#2f848b"];
+// The brighter accents from the original design, kept for the optional
+// "Original" calendar colours.
+var VIVID_PALETTE = ["#ff3b30","#34c759","#0a84ff","#ff9f0a","#bf5af2","#64d2ff"];
+// The same idea for light paper: darker versions that keep coloured text legible.
+var VIVID_LIGHT_PALETTE = ["#c92a1e","#1f7a38","#0a5fbf","#9a5a00","#8338b5","#00708a"];
 
 // Default "remind me this many minutes before" per group (see js/reminders.js)
 var REMIND_DEFAULT_LEAD = { classes: 10, quiz: 1440, deadline: 4320, exam: 1440 };
@@ -15,7 +20,7 @@ var STATE_KEY = "campus";
 // ===== State =====
 // Kept in memory (so rendering stays synchronous), mirrored to localStorage for an
 // instant first paint, and stored for real in IndexedDB by db.js.
-var state = { version: 2, subjects: [], lectures: [], events: [], lang: "ar", reminders: null };
+var state = { version: 2, subjects: [], lectures: [], events: [], lang: "ar", calendarColors: "quiet", reminders: null };
 
 try {
   var saved = localStorage.getItem(STATE_KEY);
@@ -32,6 +37,7 @@ function normalizeState(s) {
   if (!Array.isArray(s.events)) s.events = [];
   if (s.lang !== "en" && s.lang !== "ar") s.lang = "ar";
   if (s.theme !== "light" && s.theme !== "system") s.theme = "dark";
+  if (s.calendarColors !== "original") s.calendarColors = "quiet";
   s.version = 2;
   s.subjects.forEach(function (sub) {
     if (!Array.isArray(sub.files)) sub.files = [];
@@ -82,6 +88,7 @@ function resolvedTheme() {
 function applyTheme() {
   var theme = resolvedTheme();
   document.documentElement.setAttribute("data-theme", theme);
+  document.documentElement.setAttribute("data-colors", state.calendarColors === "original" ? "original" : "quiet");
   var meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", theme === "light" ? "#f3f1ec" : "#161616");
   var status = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
@@ -112,6 +119,20 @@ function fmtSize(bytes) {
 function colorOf(id) {
   var light = document.documentElement.getAttribute("data-theme") === "light";
   var palette = light ? LIGHT_PALETTE : PALETTE;
+  for (var i = 0; i < state.subjects.length; i++) if (state.subjects[i].id === id) return palette[i % palette.length];
+  return light ? "#8a8780" : "#888";
+}
+
+// The calendar can optionally use the brighter colours from the original design.
+// Everything outside the calendar keeps the quieter current palette.
+function originalCalendarColors() {
+  return state.calendarColors === "original";
+}
+
+function calendarColorOf(id) {
+  var light = document.documentElement.getAttribute("data-theme") === "light";
+  var palette = light ? LIGHT_PALETTE : PALETTE;
+  if (originalCalendarColors()) palette = light ? VIVID_LIGHT_PALETTE : VIVID_PALETTE;
   for (var i = 0; i < state.subjects.length; i++) if (state.subjects[i].id === id) return palette[i % palette.length];
   return light ? "#8a8780" : "#888";
 }
