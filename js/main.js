@@ -1,5 +1,9 @@
 // ===== Buttons + start =====
 function render() {
+  // A long-press menu or select-mode bar belongs to the day view; drop them
+  // as soon as the user navigates somewhere else.
+  if (typeof closeDayMenu === "function") closeDayMenu();
+  if (typeof exitDaySelection === "function" && (tab !== "cal" || !dayOpen)) exitDaySelection();
   document.getElementById("bCal").className = "round" + (tab === "cal" ? " on" : "");
   document.getElementById("bSub").className = "round" + (tab === "sub" ? " on" : "");
   document.getElementById("app").classList.toggle("day-view", tab === "cal" && !!dayOpen);
@@ -11,11 +15,45 @@ function render() {
 document.getElementById("bCal").onclick = function () { tab = "cal"; dayOpen = null; yearOpen = false; render(); };
 document.getElementById("bSub").onclick = function () { tab = "sub"; openId = null; render(); };
 document.getElementById("bToday").onclick = openSearch;
-document.getElementById("plans").onkeydown = function (e) {
-  if (e.key === "Enter" && this.value.trim()) { handlePhrase(this.value.trim(), "✎"); this.value = ""; }
+var plansInput = document.getElementById("plans");
+var composer = document.getElementById("composer");
+var composerScrim = document.getElementById("composerScrim");
+
+function openComposer() {
+  document.getElementById("app").classList.add("composing");
+  plansInput.placeholder = "Ask...";
+  if (typeof syncThemeColor === "function") syncThemeColor();
+}
+
+function closeComposer() {
+  if (typeof cancelVoice === "function") cancelVoice();
+  document.getElementById("app").classList.remove("composing");
+  plansInput.placeholder = "What are your plans?";
+  if (document.activeElement === plansInput) plansInput.blur();
+  if (typeof syncThemeColor === "function") syncThemeColor();
+}
+
+function sendPlan() {
+  var text = plansInput.value.trim();
+  if (!text) { closeComposer(); addLecture(today.getDay()); return; }
+  plansInput.value = "";
+  closeComposer();
+  if (typeof openChatWithText === "function") openChatWithText(text, "✎");
+  else handlePhrase(text, "✎");
+}
+
+plansInput.addEventListener("focus", openComposer);
+plansInput.onkeydown = function (e) {
+  if (e.key === "Escape") { closeComposer(); return; }
+  if (e.key === "Enter" && this.value.trim()) { e.preventDefault(); sendPlan(); }
 };
+document.getElementById("composerClose").onclick = closeComposer;
+composerScrim.onclick = closeComposer;
+document.getElementById("attach").onclick = function () { openAttachSheet(); };
+document.getElementById("planToday").onclick = sendPlan;
 document.getElementById("bAdd").onclick = function () { addLecture(today.getDay()); };
 document.getElementById("mic").onclick = listen;
+document.getElementById("voiceStop").onclick = stopVoice;
 
 // ===== Settings =====
 var SET_ICON = {

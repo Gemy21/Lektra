@@ -156,8 +156,8 @@ function accentInk(hex) {
 }
 
 // iOS shows the page/body background in the status-bar strip above the web
-// layer. When a sheet is open the page behind it is dimmed, so match that strip
-// to the dimmed colour instead of leaving a bright band above the scrim.
+// layer. When a sheet or the composer is open the page behind it is dimmed, so
+// match that strip to the dimmed colour instead of leaving a bright band.
 function parseCssColor(c) {
   c = String(c || "").trim();
   if (c.charAt(0) === "#") {
@@ -195,9 +195,16 @@ function syncThemeColor() {
   var root = document.documentElement;
   var appBg = getComputedStyle(root).getPropertyValue("--app-bg").trim() || "#161616";
   var modal = document.getElementById("modal");
+  var app = document.getElementById("app");
   var color = appBg;
   if (modal && modal.classList.contains("show")) {
     color = blendCssColor(getComputedStyle(modal).backgroundColor, appBg);
+  } else if (app && app.classList.contains("chatting")) {
+    var chat = document.getElementById("chat");
+    if (chat) color = blendCssColor(getComputedStyle(chat).backgroundColor, appBg);
+  } else if (app && app.classList.contains("composing")) {
+    var scrim = document.getElementById("composerScrim");
+    if (scrim) color = blendCssColor(getComputedStyle(scrim).backgroundColor, appBg);
   }
   // The strip above the web layer samples the page background; the meta tag
   // covers browsers that use theme-color instead. Setting both keeps the

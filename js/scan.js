@@ -252,6 +252,51 @@ function scanAsk(file) {
 }
 
 // ===== the flow =====
+var ATTACH_PHOTO_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15.5" rx="4"/><circle cx="8.3" cy="9.6" r="1.5"/><path d="M4.2 17.4l4.9-4.9 3.8 3.8 2.2-2.2 4.7 4.7"/><path d="M18.5 2.2v4M16.5 4.2h4"/></svg>';
+var ATTACH_CAMERA_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.4 8.2h3.1l1.6-2.4h5.8l1.6 2.4h3.1a1.2 1.2 0 0 1 1.2 1.2v9a1.2 1.2 0 0 1-1.2 1.2H4.4a1.2 1.2 0 0 1-1.2-1.2v-9a1.2 1.2 0 0 1 1.2-1.2z"/><circle cx="12" cy="13.4" r="3.4"/><path d="M18.5 2.2v4M16.5 4.2h4"/></svg>';
+
+// Photo picker sheet used by the composer's paperclip. Two big choices, then
+// the existing scan flow takes over once a photo is picked.
+function openAttachSheet() {
+  openModal(
+    '<div class="attach-grid">' +
+      '<button type="button" class="attach-card" id="attachLibrary">' +
+        '<span class="attach-icon">' + ATTACH_PHOTO_ICON + '</span>' +
+        '<span class="attach-name">Photo Library</span>' +
+        '<span class="attach-sub">A screenshot or a poster</span>' +
+      '</button>' +
+      '<button type="button" class="attach-card" id="attachCamera">' +
+        '<span class="attach-icon">' + ATTACH_CAMERA_ICON + '</span>' +
+        '<span class="attach-name">Camera</span>' +
+        '<span class="attach-sub">Shoot an invite or a flyer</span>' +
+      '</button>' +
+    '</div>' +
+    '<div class="attach-note">Lektra reads the dates and times out of the picture.</div>' +
+    '<input type="file" id="attachLibraryFile" accept="image/*" style="display:none">',
+    null
+  );
+  var box = document.getElementById("box");
+  box.classList.add("attachsheet");
+  var handle = box.querySelector(".handle");
+  if (handle) handle.remove();
+  var btns = box.querySelector(".btns");
+  if (btns) btns.remove();
+
+  document.getElementById("attachLibrary").onclick = function () {
+    document.getElementById("attachLibraryFile").click();
+  };
+  document.getElementById("attachCamera").onclick = function () {
+    closeModal();
+    if (typeof openCamera === "function") openCamera();
+  };
+  document.getElementById("attachLibraryFile").onchange = function () {
+    var f = this.files && this.files[0];
+    if (!f) return;
+    closeModal();
+    scanRun(f);
+  };
+}
+
 function scanTimetable() {
   openModal(
     '<h2>Scan a timetable</h2>' +

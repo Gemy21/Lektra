@@ -311,14 +311,16 @@ function dayItems(date) {
     out.push({
       color: colorOf(e.subjectId), title: subjectName(e.subjectId), sid: e.subjectId,
       sub: kindLabel(e.kind) + (e.note ? " · " + e.note : ""),
-      time: e.time, kind: "ev", etype: e.kind, id: e.id
+      time: e.time, kind: "ev", etype: e.kind, id: e.id,
+      priority: e.priority || ""
     });
   });
   lecturesOn(date.getDay(), false).forEach(function (l) {
     out.push({
       color: colorOf(l.subjectId), title: subjectName(l.subjectId), sid: l.subjectId,
       sub: kindLabel(l.kind) + (l.place ? " · " + l.place : ""),
-      time: l.time, kind: "lec", etype: l.kind, id: l.id
+      time: l.time, kind: "lec", etype: l.kind, id: l.id,
+      priority: l.priority || ""
     });
   });
   return out.filter(dayFilterMatches).sort(function (a, b) { return (a.time || "99:99") < (b.time || "99:99") ? -1 : 1; });
@@ -535,7 +537,7 @@ function timelineCardHtml(item, start, col, cols) {
   var widthCss = cols === 1 ? "100%" : "calc(" + width + "% - 1cqw)";
   var style = "--c:" + item.color + ";--start:" + start + ";left:" + leftCss + ";width:" + widthCss +
     ";background:" + item.color + "1f;border-color:" + item.color + "55";
-  return '<div class="dtlev" style="' + style + '" data-sub="' + item.sid + '">' +
+  return '<div class="dtlev" style="' + style + '" data-sub="' + item.sid + '" data-entry="' + item.kind + ":" + item.id + '" data-prio="' + (item.priority || "") + '">' +
     '<span class="dtlevt">' + esc(fmtTime(item.time)) + "</span>" +
     "<b>" + esc(item.title) + "</b><i>" + esc(item.sub) + "</i>" +
     '<button class="x" data-del="' + item.kind + ":" + item.id + '" aria-label="Delete">✕</button>' +
@@ -550,7 +552,12 @@ function timelineAllDayHtml(item) {
   "</div>";
 }
 
-function openDay(date) { yearOpen = false; dayOpen = date; render(); }
+function openDay(date) {
+  yearOpen = false;
+  dayOpen = date;
+  if (typeof exitDaySelection === "function") exitDaySelection();
+  render();
+}
 
 function renderDay() {
   clearDayNowTimer();
@@ -617,7 +624,9 @@ function renderDay() {
     html += '<div class="demptybox"><span class="demptyemoji" aria-hidden="true">' + DAY_SPARKS[daySpark] + '</span><span class="demptytext">Nothing on this day</span></div>';
   } else {
     html += '<div class="dcard">' + items.map(function (it) {
-      return '<div class="drow"><span class="ddot" style="background:' + it.color + '"></span>' +
+      var prio = it.priority || "";
+      return '<div class="drow" data-entry="' + it.kind + ":" + it.id + '" data-sub="' + it.sid + '" data-prio="' + prio + '">' +
+        '<span class="ddot" style="background:' + it.color + '"></span>' +
         '<div class="dtxt"><b>' + esc(it.title) + "</b><i>" + esc(it.sub) + "</i></div>" +
         '<span class="dtime">' + esc(fmtTime(it.time)) + "</span>" +
         '<button class="x" data-del="' + it.kind + ":" + it.id + '" aria-label="Delete">✕</button></div>';
@@ -687,6 +696,8 @@ function renderDay() {
   main.querySelectorAll("[data-sub]").forEach(function (b) {
     b.onclick = function () { tab = "sub"; openId = b.getAttribute("data-sub"); render(); };
   });
+  if (typeof bindDayLongPress === "function") bindDayLongPress(main);
+  if (typeof syncDaySelection === "function") syncDaySelection();
 
   startDaySparkTimer();
   scrollDayTimeline(isToday);
@@ -720,6 +731,33 @@ var E_ICON = {
 function addLecture(dow, pre) {
   if (!state.subjects.length) { addSubject(function () { addLecture(dow, pre); }); return; }
   pre = pre || {};
+  // Editing an existing day entry reuses this sheet. The snapshot keeps the
+  // original values while the user re-renders the sheet (chips/day toggles).
+  var editRef = null;
+  if (pre.edit && typeof dayEntryRef === "function") {
+    editRef = dayEntryRef(pre.edit.kind, pre.edit.id);
+    if (editRef && !pre.edit.snapshot) {
+      var eit = editRef.item;
+      pre.edit.snapshot = {
+        subjectId: eit.subjectId, kind: eit.kind, time: eit.time,
+        place: eit.place, date: eit.date, note: eit.note,
+        weekday: eit.weekday, list: editRef.list
+      };
+    }
+    if (pre.edit.snapshot) {
+      var sn = pre.edit.snapshot;
+      if (pre.subjectId == null) pre.subjectId = sn.subjectId;
+      if (pre.kind == null) pre.kind = sn.kind;
+      if (pre.time == null) pre.time = sn.time;
+      if (pre.place == null) pre.place = sn.place;
+      if (pre.date == null) pre.date = sn.date;
+      if (pre.note == null) pre.note = sn.note;
+      if (dow == null) {
+        dow = sn.list === "lectures" ? sn.weekday
+          : (sn.date ? new Date(sn.date + "T00:00:00").getDay() : dow);
+      }
+    }
+  }
   var subId = pre.subjectId || state.subjects[0].id;
   var kind = pre.kind || "lecture";
   var day = dow;
@@ -738,7 +776,7 @@ function addLecture(dow, pre) {
 
   var html = '<div class="ehead">' +
     '<span class="eico">' + E_ICON.list + "</span>" +
-    "<h2>New entry</h2>" +
+    "<h2>" + (editRef ? "Edit entry" : "New entry") + "</h2>" +
     '<div class="egrp">' +
       '<button data-grp="w" class="' + (group === "w" ? "on" : "") + '" aria-label="Repeats weekly">' + E_ICON.repeat + "</button>" +
       '<button data-grp="d" class="' + (group === "d" ? "on" : "") + '" aria-label="One date">' + E_ICON.cal + "</button>" +
@@ -765,6 +803,7 @@ function addLecture(dow, pre) {
   function fieldVal(id) { var el = document.getElementById(id); return el ? el.value : ""; }
   function rerender() {
     addLecture(day, {
+      edit: pre.edit,
       subjectId: subId, kind: kind, heard: pre.heard,
       time: fieldVal("fTime"), place: fieldVal("fPlace"), date: fieldVal("fDate"), note: fieldVal("fNote")
     });
@@ -834,20 +873,38 @@ function addLecture(dow, pre) {
   document.getElementById("eCancel").onclick = closeModal;
   document.getElementById("eOk").onclick = function () {
     var time = document.getElementById("fTime").value;
+    var keepId = editRef ? editRef.item.id : uid();
+    var keepPrio = editRef ? (editRef.item.priority || "") : "";
+    var nextLecture = null, nextEvent = null;
+
     if (isWeekly(kind)) {
       var place = document.getElementById("fPlace").value.trim();
       if (!place) { toast("Write the place"); return; }
-      state.lectures.push({ id: uid(), subjectId: subId, kind: kind, weekday: day, time: time, place: place });
+      nextLecture = { id: keepId, subjectId: subId, kind: kind, weekday: day, time: time, place: place };
+      if (keepPrio) nextLecture.priority = keepPrio;
     } else {
       var date = document.getElementById("fDate").value;
       if (!date) { toast("Pick the date"); return; }
-      state.events.push({ id: uid(), subjectId: subId, kind: kind, date: date, time: time, note: document.getElementById("fNote").value.trim() });
-      var p = date.split("-");
+      nextEvent = { id: keepId, subjectId: subId, kind: kind, date: date, time: time, note: document.getElementById("fNote").value.trim() };
+      if (keepPrio) nextEvent.priority = keepPrio;
+    }
+
+    // Editing can switch an entry between weekly and one-date, so drop the old
+    // record first and write the new one into the right list.
+    if (editRef) {
+      state.lectures = state.lectures.filter(function (l) { return l.id !== keepId; });
+      state.events = state.events.filter(function (e) { return e.id !== keepId; });
+    }
+    if (nextLecture) state.lectures.push(nextLecture);
+    if (nextEvent) {
+      state.events.push(nextEvent);
+      var p = nextEvent.date.split("-");
       view = new Date(+p[0], +p[1] - 1, 1);
       // If we came from a day sheet, follow the entry to its new date.
       if (dayOpen) dayOpen = new Date(+p[0], +p[1] - 1, +p[2]);
     }
     save(); render(); closeModal();
+    if (editRef) toast("Entry updated");
   };
 }
 
