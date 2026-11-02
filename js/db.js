@@ -3,7 +3,7 @@
 // No network, no Google Drive, works fully offline.
 
 var DB_NAME = "lektra";
-var DB_VERSION = 1;
+var DB_VERSION = 2;
 var dbPromise = null;
 
 function openDB() {
@@ -15,6 +15,8 @@ function openDB() {
       var db = req.result;
       if (!db.objectStoreNames.contains("kv")) db.createObjectStore("kv");
       if (!db.objectStoreNames.contains("files")) db.createObjectStore("files", { keyPath: "id" });
+      // v2: the result of each scanned timetable, keyed by the photo's fingerprint.
+      if (!db.objectStoreNames.contains("scans")) db.createObjectStore("scans", { keyPath: "key" });
     };
     req.onsuccess = function () { resolve(req.result); };
     req.onerror = function () { reject(req.error); };
@@ -86,6 +88,16 @@ function openStoredFile(id) {
     setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
   }).catch(function () { toast("Could not open that file"); });
 }
+
+// ===== Scanned timetables =====
+// The photo itself isn't stored - the fingerprint identifies it, so a re-upload
+// of the same bytes can show the classes we read last time without spending an
+// AI call. Records: { key, at, entries, name, size }.
+
+function getScan(key) { return idbGet("scans", key); }
+function putScan(rec) { return idbPut("scans", rec); }
+function allScans() { return idbAll("scans"); }
+function deleteScan(key) { return idbDel("scans", key); }
 
 // ===== Data safety =====
 

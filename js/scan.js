@@ -438,6 +438,66 @@ function scanTimetable() {
   openAttachSheet();
 }
 
+// ===== remembering a photo we have already read =====
+// Re-picking the same timetable photo shouldn't cost another AI call, so we
+// fingerprint the bytes and keep the classes that came back. Only the result is
+// stored, not the photo: the same file produces the same fingerprint next time.
+var SCAN_CACHE_MAX = 20;
+var scanLastKey = "";
+var scanLastFile = null;
+
+function scanPhotoKey(file) {
+  if (!file || !file.size) return Promise.resolve("");
+  try {
+    if (typeof crypto !== "undefined" && crypto.subtle && crypto.subtle.digest && file.arrayBuffer) {
+      return file.arrayBuffer().then(function (buf) {
+        return crypto.subtle.digest("SHA-256", buf);
+      }).then(function (hash) {
+        var b = new Uint8Array(hash), hex = "";
+        for (var i = 0; i < b.length; i++) hex += ("0" + b[i].toString(16)).slice(-2);
+        return "sha256:" + hex;
+      }).catch(function () { return scanPhotoFingerprint(file); });
+    }
+  } catch (e) {}
+  return Promise.resolve(scanPhotoFingerprint(file));
+}
+
+// Insecure origins (a LAN address, an old browser) have no crypto.subtle. Size,
+// name and modified time still tell the same photo apart well enough.
+function scanPhotoFingerprint(file) {
+  return "fp:" + (file.size || 0) + ":" + (file.lastModified || 0) + ":" + (file.name || "");
+}
+
+function scanCacheGet(key) {
+  if (!key || typeof getScan !== "function") return Promise.resolve(null);
+  return getScan(key).catch(function () { return null; });
+}
+
+function scanCachePut(key, entries, file) {
+  if (!key || !entries || !entries.length || typeof putScan !== "function") return Promise.resolve();
+  var rec = {
+    key: key,
+    at: Date.now(),
+    entries: entries,
+    name: (file && file.name) || "",
+    size: (file && file.size) || 0
+  };
+  return putScan(rec).then(function () {
+    return allScans();               // keep the last few only
+  }).then(function (all) {
+    if (!all || all.length <= SCAN_CACHE_MAX) return;
+    var old = all.sort(function (a, b) { return (a.at || 0) - (b.at || 0); })
+      .slice(0, all.length - SCAN_CACHE_MAX);
+    return Promise.all(old.map(function (r) { return deleteScan(r.key); }));
+  }).catch(function () {});
+}
+
+function scanWhen(ts) {
+  try {
+    return new Date(ts).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  } catch (e) { return ""; }
+}
+
 // ===== the loading card =====
 // Two frames: one rAF can still land in the same paint as the tap, so wait for
 // the next one to guarantee the card is on screen before the work begins. The
@@ -547,23 +607,64 @@ function scanBusyOpen(file) {
   } catch (e) {}
 }
 
-// The scan is a short pipeline, not one blocking call: prepare -> send -> read
-// -> check. Each step repaints the card and yields, so the clock and the bar
-// keep moving however long the network takes.
-function scanRun(file) {
+// The scan is a short pipeline, not one blocking call: fingerprint -> check the
+// cache -> prepare -> send -> read -> check. Each step repaints the card and
+// yields, so the clock and the bar keep moving however long the network takes.
+//
+// opts.rescan skips the cache on purpose: it is the "read this photo again"
+// button on a cached result, for a timetable that has changed.
+function scanRun(file, opts) {
+  opts = opts || {};
   cancelScan();
   var run = scanSeq;
 
   scanBusyOpen(file);
   scanTickStart();
-  scanStage(6, "Preparing the photo…");
+  scanStage(6, opts.rescan ? "Reading this photo again…" : "Checking this photo…");
+
+  nextPaint()
+    .then(function () {
+      if (run !== scanSeq) return null;
+      return scanPhotoKey(file);
+    })
+    .then(function (key) {
+      if (run !== scanSeq) return null;
+
+      if (opts.rescan) return scanAnalyse(file, run, key);
+
+      return scanCacheGet(key).then(function (hit) {
+        if (run !== scanSeq) return null;
+        if (!hit || !hit.entries || !hit.entries.length) return scanAnalyse(file, run, key);
+
+        // This exact photo was read before: show those classes straight away.
+        scanTickStop();
+        revokeScanPreview();
+        scanStage(100, "Showing the scan from " + scanWhen(hit.at) + "…");
+        return nextPaint().then(function () {
+          if (run !== scanSeq) return;
+          scanReview(hit.entries, { cached: true, at: hit.at, file: file, key: key });
+        });
+      });
+    })
+    .catch(function (e) {
+      if (run !== scanSeq) return;
+      scanTickStop();
+      revokeScanPreview();
+      scanFail(e && e.message ? e.message : "Something went wrong.");
+    });
+}
+
+function scanAnalyse(file, run, key) {
+  if (run !== scanSeq) return null;
 
   // The AI helper is a network download, so start it now and let it overlap the
   // image work instead of making the student wait for one, then the other.
   var sdk = loadPuter();
-  sdk.catch(function () {});          // re-reported below; keeps it "handled"
+  sdk.catch(function () {});          // re-reported by scanRun; keeps it "handled"
 
-  nextPaint()
+  scanStage(18, "Preparing the photo…");
+
+  return nextPaint()
     .then(function () {
       if (run !== scanSeq) return null;
       return scanPrepTimetable(file);
@@ -582,7 +683,7 @@ function scanRun(file) {
       });
     })
     .then(function (raw) {
-      if (run !== scanSeq) return;
+      if (run !== scanSeq) return null;
       scanStage(94, "Checking the classes…");
       var entries = normalizeScan(raw);
       return nextPaint().then(function () {
@@ -593,14 +694,10 @@ function scanRun(file) {
           scanFail("I couldn't find any classes in that photo. Try a straighter, clearer shot with the whole table in frame.");
           return;
         }
-        scanReview(entries);
+        // Remember the result, so re-picking this photo is instant and free.
+        scanCachePut(key, entries, file);
+        scanReview(entries, { at: Date.now(), file: file, key: key });
       });
-    })
-    .catch(function (e) {
-      if (run !== scanSeq) return;
-      scanTickStop();
-      revokeScanPreview();
-      scanFail(e && e.message ? e.message : "Something went wrong.");
     });
 }
 
@@ -632,7 +729,7 @@ function askBeforeDiscardScan() {
   wrap.innerHTML =
     '<div class="scan-warn-card" role="alertdialog" aria-modal="true" aria-labelledby="scanWarnTitle">' +
       '<b id="scanWarnTitle">Discard these classes?</b>' +
-      '<p>They have not been saved yet. If you close now the scan is gone and you will have to read the photo again.</p>' +
+      '<p>They have not been saved yet. If you close now they are not added to your timetable, and you will have to open the photo again.</p>' +
       '<div class="scan-warn-btns">' +
         '<button type="button" id="scanWarnStay">Keep editing</button>' +
         '<button type="button" class="danger" id="scanWarnGo">Discard</button>' +
@@ -651,9 +748,30 @@ function askBeforeDiscardScan() {
 }
 
 // ===== review before anything is saved =====
-function scanReview(entries) {
-  var html = '<h2>Check what I found</h2><div class="muted">' + entries.length + " class" +
-    (entries.length > 1 ? "es" : "") + " detected. Uncheck anything wrong, fix the details, then save.</div><div id=\"scanList\">";
+function scanReview(entries, opts) {
+  opts = opts || {};
+  scanLastKey = opts.key || "";
+  scanLastFile = opts.file || null;
+
+  var count = entries.length === 1 ? "1 class" : entries.length + " classes";
+  var intro = opts.cached
+    ? "These are the " + count + " from that scan. Uncheck anything wrong, fix the details, then save."
+    : count + " detected. Uncheck anything wrong, fix the details, then save.";
+
+  var html = '<h2>Check what I found</h2><div class="muted">' + intro + "</div>";
+
+  if (opts.cached) {
+    html +=
+      '<div class="scan-again">' +
+        '<div class="i">' +
+          '<b>You scanned this photo on ' + esc(scanWhen(opts.at)) + "</b>" +
+          "<span>Nothing was sent to the AI this time. Rescan if the timetable has changed.</span>" +
+        "</div>" +
+        '<button type="button" id="scanRescan">Rescan</button>' +
+      "</div>";
+  }
+
+  html += '<div id="scanList">';
 
   entries.forEach(function (e, n) {
     html += '<div class="srow"><div class="shead"><input type="checkbox" class="pick" checked>' +
@@ -683,6 +801,15 @@ function scanReview(entries) {
   document.getElementById("scanSave").onclick = saveScan;
   document.getElementById("scanAgain").onclick = scanTimetable;
 
+  // Read this exact photo again, ignoring the cached result.
+  var rescan = document.getElementById("scanRescan");
+  if (rescan) {
+    rescan.onclick = function () {
+      if (scanLastFile) scanRun(scanLastFile, { rescan: true });
+      else scanTimetable();
+    };
+  }
+
   // Nothing is saved yet: every way out of this sheet asks first.
   modalCloseGuard = askBeforeDiscardScan;
 
@@ -705,6 +832,7 @@ function saveScan() {
   // Saving is the finish line, not a discard: don't ask on the way out.
   modalCloseGuard = null;
   var added = 0, newSubjects = 0;
+  var finalEntries = [];
 
   Array.prototype.forEach.call(document.querySelectorAll(".srow"), function (row) {
     var pick = row.querySelector(".pick");
@@ -718,6 +846,8 @@ function saveScan() {
     var day = dbtn ? parseInt(dbtn.getAttribute("data-d"), 10) : 0;
     var time = row.querySelector(".stime").value || "";
     var place = row.querySelector(".splace").value.trim() || "TBA";
+
+    finalEntries.push({ subject: name, kind: kind, day: day, time: time, place: place });
 
     var sub = state.subjects.filter(function (s) { return s.name.toLowerCase() === name.toLowerCase(); })[0];
     if (!sub) {
@@ -734,6 +864,10 @@ function saveScan() {
     state.lectures.push({ id: uid(), subjectId: sub.id, kind: kind, weekday: day, time: time, place: place });
     added++;
   });
+
+  // Keep the cached result in step with the corrections, so re-picking this
+  // photo shows exactly what was accepted instead of the raw AI answer.
+  if (scanLastKey && finalEntries.length) scanCachePut(scanLastKey, finalEntries, scanLastFile);
 
   save(); render(); closeModal();
   if (!added) { toast("Nothing new to add"); return; }
