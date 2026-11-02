@@ -12,11 +12,16 @@
 
 var SCAN_SCRIPT = "https://js.puter.com/v2/";
 var SCAN_MAX_PX = 1600;                 // shrink big phone photos before sending
+var SCAN_MAX_BYTES = 900 * 1024;        // small enough already? don't re-encode it
+var SCAN_QUALITY = 0.86;
 var SCAN_TIMEOUT_MS = 90000;
 var SCAN_MODELS = ["gpt-5.6-luna", null, "gemini-3.1-flash-lite"];  // null = Puter's default
 var scanLoader = null;
 var scanSeq = 0;
 var scanPreviewUrl = "";
+var scanTicker = null;      // ticker that keeps the elapsed clock alive
+var scanStartedAt = 0;
+var scanStageAt = 0;
 
 function revokeScanPreview() {
   if (scanPreviewUrl) {
@@ -25,10 +30,12 @@ function revokeScanPreview() {
   }
 }
 
-// Called when the sheet closes: invalidate the in-flight request and free the
-// preview image, so a late AI answer cannot pop the sheet back open.
+// Called when the sheet closes: invalidate the in-flight request, stop the
+// clock and free the preview image, so a late AI answer cannot pop the sheet
+// back open.
 function cancelScan() {
   scanSeq++;
+  scanTickStop();
   revokeScanPreview();
 }
 
@@ -49,10 +56,49 @@ function loadPuter() {
   return scanLoader;
 }
 
-// ===== shrink the photo (cheaper, faster, more reliable) =====
+// ===== shrink the photo (the fallback path) =====
+// The worker below normally does this, off the main thread. This version is for
+// browsers without workers or OffscreenCanvas: createImageBitmap() still
+// decodes off the main thread, but the JPEG encode can still hiccup here.
 function shrinkImage(file) {
+  if (!/^image\//.test(file.type)) return Promise.resolve(file);
+  if (typeof createImageBitmap !== "function") return shrinkImageLegacy(file);
+
+  return createImageBitmap(file).then(function (bmp) {
+    var w = bmp.width || 1, h = bmp.height || 1;
+    var scale = Math.min(1, SCAN_MAX_PX / Math.max(w, h));
+    var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+
+    // Already a small, sensible JPEG: send it untouched.
+    if (scale === 1 && file.size <= SCAN_MAX_BYTES) return file;
+
+    if (typeof OffscreenCanvas === "function") {
+      var off = new OffscreenCanvas(cw, ch);
+      off.getContext("2d").drawImage(bmp, 0, 0, cw, ch);
+      if (bmp.close) bmp.close();
+      return off.convertToBlob({ type: "image/jpeg", quality: SCAN_QUALITY }).then(function (blob) {
+        return blob ? new File([blob], "timetable.jpg", { type: "image/jpeg" }) : file;
+      });
+    }
+
+    // No OffscreenCanvas: draw into a normal canvas, but at least the decode
+    // above already happened off the main thread.
+    var c = document.createElement("canvas");
+    c.width = cw; c.height = ch;
+    c.getContext("2d").drawImage(bmp, 0, 0, cw, ch);
+    if (bmp.close) bmp.close();
+    return new Promise(function (resolve) {
+      c.toBlob(function (blob) {
+        resolve(blob ? new File([blob], "timetable.jpg", { type: "image/jpeg" }) : file);
+      }, "image/jpeg", SCAN_QUALITY);
+    });
+  }).catch(function () {
+    return shrinkImageLegacy(file);
+  });
+}
+
+function shrinkImageLegacy(file) {
   return new Promise(function (resolve) {
-    if (!/^image\//.test(file.type)) { resolve(file); return; }
     var url;
     try { url = URL.createObjectURL(file); } catch (e) { resolve(file); return; }
     var img = new Image();
@@ -68,11 +114,95 @@ function shrinkImage(file) {
           URL.revokeObjectURL(url);
           if (!blob) { resolve(file); return; }
           resolve(new File([blob], "timetable.jpg", { type: "image/jpeg" }));
-        }, "image/jpeg", 0.85);
+        }, "image/jpeg", SCAN_QUALITY);
       } catch (e) { URL.revokeObjectURL(url); resolve(file); }
     };
     img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
     img.src = url;
+  });
+}
+
+// ===== hand the photo work to a worker =====
+// Encoding the JPEG alone blocks the page for ~130 ms on a laptop and several
+// times that on a phone, which is the part that made scanning feel frozen. The
+// worker below keeps the spinner and the clock moving; if it is unavailable the
+// code above does the same job here instead.
+var scanWorker = null;
+var scanWorkerBroken = false;
+var scanWorkerSeq = 0;
+var scanWorkerJobs = {};
+
+function scanWorkerAnswer(d) {
+  var job = scanWorkerJobs[d.id];
+  if (!job) return;                     // cancelled, or already answered
+  delete scanWorkerJobs[d.id];
+  clearTimeout(job.timer);
+  if (d.blob) {
+    job.resolve(new File([d.blob], "timetable.jpg", { type: "image/jpeg" }));
+    return;
+  }
+  if (d.skip) { job.resolve(job.file); return; }
+  shrinkImage(job.file).then(job.resolve);   // error / unsupported
+}
+
+function scanWorkerStop() {
+  var pending = scanWorkerJobs;
+  scanWorkerJobs = {};
+  try { if (scanWorker) scanWorker.terminate(); } catch (e) {}
+  scanWorker = null;
+  return pending;
+}
+
+function scanWorkerStart() {
+  if (scanWorker) return scanWorker;
+  if (scanWorkerBroken || typeof Worker !== "function") { scanWorkerBroken = true; return null; }
+  try {
+    scanWorker = new Worker("js/scan-worker.js");
+  } catch (e) {
+    scanWorkerBroken = true;
+    scanWorker = null;
+    return null;
+  }
+  scanWorker.onmessage = function (e) { scanWorkerAnswer(e.data || {}); };
+  scanWorker.onerror = function () {
+    // Don't retry a broken worker on every scan: finish what is pending here
+    // and use the main-thread path from now on.
+    scanWorkerBroken = true;
+    var pending = scanWorkerStop();
+    Object.keys(pending).forEach(function (k) {
+      var job = pending[k];
+      clearTimeout(job.timer);
+      shrinkImage(job.file).then(job.resolve);
+    });
+  };
+  return scanWorker;
+}
+
+function scanPrepTimetable(file) {
+  if (!/^image\//.test(file.type)) return shrinkImage(file);
+  var w = scanWorkerStart();
+  if (!w) return shrinkImage(file);
+  return new Promise(function (resolve) {
+    var id = ++scanWorkerSeq;
+    var job = { file: file, resolve: resolve, timer: null };
+    scanWorkerJobs[id] = job;
+    // Watchdog: a worker that hangs must not leave the card spinning forever.
+    job.timer = setTimeout(function () {
+      if (!scanWorkerJobs[id]) return;
+      delete scanWorkerJobs[id];
+      scanWorkerBroken = true;
+      try { scanWorker.terminate(); } catch (e) {}
+      scanWorker = null;
+      shrinkImage(file).then(resolve);
+    }, 15000);
+    try {
+      w.postMessage({ id: id, file: file });
+    } catch (e) {
+      delete scanWorkerJobs[id];
+      clearTimeout(job.timer);
+      scanWorkerBroken = true;
+      shrinkImage(file).then(resolve);
+    }
   });
 }
 
@@ -210,7 +340,9 @@ function normalizeScan(raw) {
 }
 
 // ===== asking the model =====
-function scanAsk(file) {
+// onStage is optional: it is called with the attempt number so the loading card
+// can say "trying a different model" instead of looking stuck on one line.
+function scanAsk(file, onStage) {
   var prompt = scanPrompt();
   var i = 0;
 
@@ -219,6 +351,7 @@ function scanAsk(file) {
       return Promise.reject(new Error("The AI didn't return anything usable. Try again, or add the classes by hand."));
     }
     var model = SCAN_MODELS[i++];
+    if (onStage) { try { onStage(i); } catch (e) {} }
     var timer = null;
     var guard = new Promise(function (_, rej) {
       timer = setTimeout(function () { rej(new Error("The AI took too long to answer. Try again.")); }, SCAN_TIMEOUT_MS);
@@ -292,7 +425,8 @@ function openAttachSheet() {
   document.getElementById("attachLibraryFile").onchange = function () {
     var f = this.files && this.files[0];
     if (!f) return;
-    closeModal();
+    // Hand straight over to the progress card: closing first would flash the
+    // picker away and back again.
     scanRun(f);
   };
 }
@@ -304,46 +438,167 @@ function scanTimetable() {
   openAttachSheet();
 }
 
+// ===== the loading card =====
+// Two frames: one rAF can still land in the same paint as the tap, so wait for
+// the next one to guarantee the card is on screen before the work begins. The
+// timeout matters too: rAF is paused while the tab is in the background, and a
+// scan must not sit still because someone switched apps for a second.
+function nextPaint() {
+  return new Promise(function (resolve) {
+    var done = false;
+    function finish() { if (!done) { done = true; resolve(); } }
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(finish);
+      });
+    }
+    setTimeout(finish, 120);
+  });
+}
+
+function scanElapsed(ms) {
+  var s = Math.max(0, Math.floor(ms / 1000));
+  if (s < 1) return "";
+  if (s < 60) return s + "s";
+  return Math.floor(s / 60) + ":" + pad(s % 60);
+}
+
+// The clock is not decoration: it is the difference between "the app is doing
+// something" and "the app has frozen". It ticks whether or not a stage changes.
+function scanTickStop() {
+  if (scanTicker) { clearInterval(scanTicker); scanTicker = null; }
+}
+
+function scanTickStart() {
+  scanTickStop();
+  scanStartedAt = Date.now();
+  scanStageAt = scanStartedAt;
+  scanTicker = setInterval(function () {
+    var clock = document.getElementById("scanClock");
+    if (!clock) { scanTickStop(); return; }   // card was replaced or closed
+    clock.textContent = scanElapsed(Date.now() - scanStartedAt);
+    var msg = document.getElementById("scanMsg");
+    if (msg && Date.now() - scanStageAt > 18000) {
+      msg.textContent = "Still working — big timetables take a moment…";
+      scanStageAt = Date.now();
+    }
+  }, 500);
+}
+
+// Move the bar and the status line together, so progress and words never
+// disagree about which step is running.
+function scanStage(pct, label) {
+  var fill = document.getElementById("scanFill");
+  var msg = document.getElementById("scanMsg");
+  var track = fill ? fill.parentElement : null;
+  if (fill) fill.style.width = pct + "%";
+  if (track) track.setAttribute("aria-valuenow", String(pct));
+  if (msg && label) msg.textContent = label;
+  scanStageAt = Date.now();
+}
+
+function scanSignedIn() {
+  try {
+    return !!(typeof puter !== "undefined" && puter.auth &&
+      typeof puter.auth.isSignedIn === "function" && puter.auth.isSignedIn());
+  } catch (e) { return false; }
+}
+
+function scanReadLabel(attempt) {
+  if (attempt > 1) return "Trying a different model…";
+  return scanSignedIn() ? "Asking the AI to read it…" : "Waiting for you to sign in to Puter…";
+}
+
+function scanFileMeta(file) {
+  var parts = [];
+  var kb = file && file.size ? Math.round(file.size / 1024) : 0;
+  if (kb >= 1024) parts.push((kb / 1024).toFixed(1) + " MB");
+  else if (kb > 0) parts.push(kb + " KB");
+  var type = ((file && file.type) || "").replace("image/", "").toUpperCase();
+  if (type) parts.push(type);
+  return parts.join(" · ");
+}
+
+// The progress card, in the same floating shape as the photo picker, so
+// choosing a photo turns into progress instead of swapping sheets.
+function scanBusyOpen(file) {
+  openModal(
+    '<div class="scan-ring" aria-hidden="true"></div>' +
+    '<h2>Reading your timetable</h2>' +
+    '<div class="scan-now"><span id="scanMsg" aria-live="polite">Preparing the photo…</span><b class="scan-clock" id="scanClock"></b></div>' +
+    '<div class="scan-track" role="progressbar" aria-label="Scan progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i class="scan-fill" id="scanFill"></i></div>' +
+    '<div class="scan-photo"><img id="scanPrev" alt=""><div class="i"><b>Your photo</b><span id="scanMeta"></span></div></div>' +
+    '<button type="button" class="scan-cancel" id="scanCancel">Cancel</button>',
+    null
+  );
+  var box = document.getElementById("box");
+  box.className = "box scanbusy";
+  var handle = box.querySelector(".handle");
+  if (handle) handle.remove();
+  var btns = box.querySelector(".btns");
+  if (btns) btns.remove();
+  document.getElementById("scanCancel").onclick = closeModal;
+
+  var meta = document.getElementById("scanMeta");
+  if (meta) meta.textContent = scanFileMeta(file);
+  try {
+    scanPreviewUrl = URL.createObjectURL(file);
+    document.getElementById("scanPrev").src = scanPreviewUrl;
+  } catch (e) {}
+}
+
+// The scan is a short pipeline, not one blocking call: prepare -> send -> read
+// -> check. Each step repaints the card and yields, so the clock and the bar
+// keep moving however long the network takes.
 function scanRun(file) {
   cancelScan();
   var run = scanSeq;
-  openModal(
-    '<h2>Reading your timetable…</h2>' +
-    '<div class="muted" id="scanMsg">Preparing the photo…</div>' +
-    '<img id="scanPrev" alt="" style="width:100%;border-radius:14px;margin-top:12px;display:block">',
-    null
-  );
-  var prev = document.getElementById("scanPrev");
-  var msg = document.getElementById("scanMsg");
-  try {
-    scanPreviewUrl = URL.createObjectURL(file);
-    prev.src = scanPreviewUrl;
-  } catch (e) {}
 
-  shrinkImage(file)
+  scanBusyOpen(file);
+  scanTickStart();
+  scanStage(6, "Preparing the photo…");
+
+  // The AI helper is a network download, so start it now and let it overlap the
+  // image work instead of making the student wait for one, then the other.
+  var sdk = loadPuter();
+  sdk.catch(function () {});          // re-reported below; keeps it "handled"
+
+  nextPaint()
+    .then(function () {
+      if (run !== scanSeq) return null;
+      return scanPrepTimetable(file);
+    })
     .then(function (small) {
-      if (run !== scanSeq) return;
-      msg.textContent = "Asking the AI to read it…";
-      return loadPuter().then(function () {
+      if (run !== scanSeq) return null;
+      scanStage(38, typeof puter === "undefined" ? "Loading the AI helper…" : "Sending the photo…");
+      return sdk.then(function () { return small; });
+    })
+    .then(function (small) {
+      if (run !== scanSeq) return null;
+      scanStage(64, scanReadLabel(1));
+      return scanAsk(small, function (attempt) {
         if (run !== scanSeq) return;
-        if (puter.auth && typeof puter.auth.isSignedIn === "function" && !puter.auth.isSignedIn()) {
-          msg.textContent = "Waiting for you to sign in to Puter…";
-        }
-        return scanAsk(small);
+        scanStage(64, scanReadLabel(attempt));
       });
     })
     .then(function (raw) {
       if (run !== scanSeq) return;
-      revokeScanPreview();
+      scanStage(94, "Checking the classes…");
       var entries = normalizeScan(raw);
-      if (!entries.length) {
-        scanFail("I couldn't find any classes in that photo. Try a straighter, clearer shot with the whole table in frame.");
-        return;
-      }
-      scanReview(entries);
+      return nextPaint().then(function () {
+        if (run !== scanSeq) return;
+        scanTickStop();
+        revokeScanPreview();
+        if (!entries.length) {
+          scanFail("I couldn't find any classes in that photo. Try a straighter, clearer shot with the whole table in frame.");
+          return;
+        }
+        scanReview(entries);
+      });
     })
     .catch(function (e) {
       if (run !== scanSeq) return;
+      scanTickStop();
       revokeScanPreview();
       scanFail(e && e.message ? e.message : "Something went wrong.");
     });
