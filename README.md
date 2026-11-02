@@ -34,11 +34,11 @@ margins, and everything that matters a tap away.
 
 <div align="center">
 
-<img src="assets/screen-month.png" alt="The month view" width="30%">
-&nbsp;&nbsp;&nbsp;
-<img src="assets/screen-day.png" alt="A day at a glance" width="30%">
-&nbsp;&nbsp;&nbsp;
-<img src="assets/screen-themes.png" alt="Appearance and themes" width="30%">
+<img src="assets/screen-month.png" alt="The month view" width="31%">
+&nbsp;&nbsp;
+<img src="assets/screen-day.png" alt="A day at a glance" width="31%">
+&nbsp;&nbsp;
+<img src="assets/screen-themes.png" alt="Appearance and themes" width="31%">
 
 <sub><b>Month</b> &nbsp;·&nbsp; <b>Day</b> &nbsp;·&nbsp; <b>Appearance</b></sub>
 
