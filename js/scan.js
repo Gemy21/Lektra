@@ -263,12 +263,12 @@ function openAttachSheet() {
       '<button type="button" class="attach-card" id="attachLibrary">' +
         '<span class="attach-icon">' + ATTACH_PHOTO_ICON + '</span>' +
         '<span class="attach-name">Photo Library</span>' +
-        '<span class="attach-sub">A screenshot or a poster</span>' +
+        '<span class="attach-sub">A screenshot or a photo</span>' +
       '</button>' +
       '<button type="button" class="attach-card" id="attachCamera">' +
         '<span class="attach-icon">' + ATTACH_CAMERA_ICON + '</span>' +
         '<span class="attach-name">Camera</span>' +
-        '<span class="attach-sub">Shoot an invite or a flyer</span>' +
+        '<span class="attach-sub">Shoot the whole table</span>' +
       '</button>' +
     '</div>' +
     '<div class="attach-note">Lektra reads the dates and times out of the picture.</div>' +
@@ -297,20 +297,11 @@ function openAttachSheet() {
   };
 }
 
+// Every way into the scan (Settings, the Subjects tab, and the two retry
+// buttons in the scan flow) opens the same picker the composer's paperclip
+// uses, so there is one place to choose a photo from.
 function scanTimetable() {
-  openModal(
-    '<h2>Scan a timetable</h2>' +
-    '<div class="muted">Pick a photo of your college timetable. The AI reads it, then shows you every class it found so you can check them before saving.</div>' +
-    '<input type="file" id="scanFile" accept="image/*" style="display:none">' +
-    '<div class="btns" style="margin-top:12px"><button class="ok" id="scanPick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Choose photo</button></div>' +
-    '<div class="muted" style="margin-top:3cqw">This is the only part of Lektra that needs internet. The photo is read by <b>Puter</b>, which asks you to sign in free the first time. Nothing else ever leaves your device.</div>',
-    null
-  );
-  document.getElementById("scanPick").onclick = function () { document.getElementById("scanFile").click(); };
-  document.getElementById("scanFile").onchange = function () {
-    var f = this.files && this.files[0];
-    if (f) scanRun(f);
-  };
+  openAttachSheet();
 }
 
 function scanRun(file) {
