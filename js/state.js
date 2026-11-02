@@ -155,6 +155,14 @@ function accentInk(hex) {
   return lum > 0.6 ? "#111114" : "#fff";
 }
 
+// "255,59,48" for a colour, for rgba(var(--cr),.15) in the stylesheet. CSS
+// cannot grow an alpha suffix onto a var() colour — var(--c)26 parses as two
+// tokens, not one 8-digit hex — so tinted surfaces carry this triplet too.
+function rgbTriplet(c) {
+  var p = parseCssColor(c);
+  return Math.round(p[0]) + "," + Math.round(p[1]) + "," + Math.round(p[2]);
+}
+
 // iOS shows the page/body background in the status-bar strip above the web
 // layer. When a sheet or the composer is open the page behind it is dimmed, so
 // match that strip to the dimmed colour instead of leaving a bright band.
@@ -191,9 +199,12 @@ function blendCssColor(fg, bg) {
   return "#" + hex(r) + hex(g) + hex(bl);
 }
 
-function syncThemeColor() {
+// `bgOverride` is the app background the caller just wrote. Reading it back
+// from the computed style would force a full style recalculation, and this runs
+// on every theme change.
+function syncThemeColor(bgOverride) {
   var root = document.documentElement;
-  var appBg = getComputedStyle(root).getPropertyValue("--app-bg").trim() || "#161616";
+  var appBg = bgOverride || (getComputedStyle(root).getPropertyValue("--app-bg").trim() || "#161616");
   var modal = document.getElementById("modal");
   var app = document.getElementById("app");
   var color = appBg;
@@ -244,7 +255,7 @@ function applyTheme() {
     app.setAttribute("data-dn-pos", s.dayNumPosition || "left");
     app.setAttribute("data-day-color", s.dayColor || "fill");
   }
-  syncThemeColor();
+  syncThemeColor(appBg);
   var cs = document.querySelector('meta[name="color-scheme"]');
   if (cs) cs.setAttribute("content", mode);
   if (typeof refreshAppearance === "function") refreshAppearance();
@@ -404,13 +415,47 @@ function normalizeState(s) {
   return s;
 }
 
-// Persist: localStorage immediately (cheap + instant), IndexedDB for the real copy.
+// Persist: the whole state is serialised on every save, so a burst of taps
+// (or every keystroke in a note) used to pay for a JSON.stringify + a blocking
+// localStorage write each time. Writes are coalesced and flushed when the page
+// goes away, so nothing can be lost to a reload.
+var saveTimer = null;
+
 function save() {
+  if (saveTimer) return;
+  saveTimer = setTimeout(flushSave, 120);
+}
+
+function flushSave() {
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
   try { localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch (e) {}
   if (typeof idbPut === "function") {
     idbPut("kv", state, STATE_KEY).catch(function () {});
   }
 }
+
+if (window.addEventListener) {
+  window.addEventListener("pagehide", flushSave);
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) flushSave();
+  });
+}
+
+// Drop a queued write (used when the app is about to wipe the mirror).
+function cancelSave() {
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+}
+
+// ===== Deferred render =====
+// Rebuilding the calendar is the expensive half of a settings change, and every
+// sheet that owns one of those settings sits *on top of* the calendar. Tapping
+// through Appearance / Indicators / Month Options now repaints CSS (theme vars
+// and #app data attributes) and the sheet's own controls only; the real rebuild
+// waits until the sheet closes, so nobody pays to redraw what they cannot see.
+var pendingRender = false;
+
+function requestRender() { pendingRender = true; }
+function flushPendingRender() { if (pendingRender) render(); }
 
 // Load the authoritative copy from IndexedDB at startup.
 function loadStateFromDB() {
@@ -441,7 +486,17 @@ function refreshToday() {
   return true;
 }
 
-function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : s; return d.innerHTML; }
+// Escape for both element text and quoted attributes. Building a DOM node per
+// call was allocating (and discarding) an element for every label on every
+// render, and textContent only escapes <, > and & — never quotes, which let a
+// subject name or an AI-read value break out of value="..." / href="...".
+function esc(s) {
+  if (s == null) return "";
+  return String(s).replace(/[&<>"']/g, function (c) {
+    return c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" :
+      c === '"' ? "&quot;" : "&#39;";
+  });
+}
 var toastTimer = null;
 function toast(msg) {
   var t = document.getElementById("toast");
@@ -468,7 +523,7 @@ function colorOf(id) {
   // Unknown calendars still follow the global Theme / Single Color choice.
   if (state.settings && state.settings.indMode === "theme") return accentHex();
   if (state.settings && state.settings.indMode === "single") return state.settings.indSingle || "#ff375f";
-  return "#888";
+  return "#888888";   // full 6-digit hex: the stylesheet derives tint shades from --cr
 }
 
 // Folder icon for subject rows and search results - same stroke style as the

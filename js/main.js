@@ -1,5 +1,7 @@
 // ===== Buttons + start =====
 function render() {
+  // Any render satisfies a deferred one.
+  pendingRender = false;
   // A long-press menu or select-mode bar belongs to the day view; drop them
   // as soon as the user navigates somewhere else.
   if (typeof closeDayMenu === "function") closeDayMenu();
@@ -350,6 +352,7 @@ function settingsPage(page) {
 function clearAll() {
   state = normalizeState({});
   applyTheme();
+  if (typeof cancelSave === "function") cancelSave();   // don't resurrect the mirror
   try { localStorage.removeItem(STATE_KEY); } catch (e) {}
   var jobs = [idbPut("kv", state, STATE_KEY).catch(function () {})];
   if (typeof idbAll === "function") {

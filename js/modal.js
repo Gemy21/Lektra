@@ -38,6 +38,7 @@ function dragToClose(box) {
 function openModal(html, onOk) {
   var box = document.getElementById("box");
   box.className = "box";
+  box.removeAttribute("data-page");
   resetDrag(box);
   box.innerHTML = '<div class="handle"></div>' + html + '<div class="btns"><button id="mCancel">' + (onOk ? "Cancel" : "Close") + "</button>" + (onOk ? '<button class="ok" id="mOk">Save</button>' : "") + "</div>";
   box.scrollTop = 0;
@@ -51,6 +52,7 @@ function openModal(html, onOk) {
 function openSheet(html) {
   var box = document.getElementById("box");
   box.className = "box sheet";
+  box.removeAttribute("data-page");
   resetDrag(box);
   box.innerHTML = '<div class="handle"></div>' + html;
   box.scrollTop = 0;
@@ -67,4 +69,8 @@ function closeModal() {
   if (ov) ov.remove();
   var scrim = m.querySelector(".sheet-scrim");
   if (scrim) scrim.remove();
+  // Settings changes were only deferred, never dropped.
+  var box = document.getElementById("box");
+  if (box) box.removeAttribute("data-page");
+  if (typeof flushPendingRender === "function") flushPendingRender();
 }

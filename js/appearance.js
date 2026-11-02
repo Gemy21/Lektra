@@ -209,7 +209,7 @@ function bindIndicatorsSheet(ov) {
       if (state.settings.indMode === id) return;
       state.settings.indMode = id;
       indSetDraft = null;
-      save(); render(); renderIndicatorsSheet(ov); refreshAppearance();
+      save(); requestRender(); renderIndicatorsSheet(ov); refreshAppearance();
     };
   });
 
@@ -223,7 +223,7 @@ function bindIndicatorsSheet(ov) {
       // per-calendar palette.
       state.settings.indSet = already ? "" : id;
       indSetDraft = null;
-      save(); render(); renderIndicatorsSheet(ov); refreshAppearance();
+      save(); requestRender(); renderIndicatorsSheet(ov); refreshAppearance();
     };
   });
 
@@ -235,7 +235,7 @@ function bindIndicatorsSheet(ov) {
       if (!set || !confirm("Delete “" + set.name + "”?")) return;
       state.settings.indSets = state.settings.indSets.filter(function (c) { return c.id !== id; });
       if (state.settings.indSet === id) state.settings.indSet = "";
-      save(); render(); renderIndicatorsSheet(ov); refreshAppearance();
+      save(); requestRender(); renderIndicatorsSheet(ov); refreshAppearance();
     };
   });
 
@@ -278,7 +278,7 @@ function bindIndicatorsSheet(ov) {
       state.settings.indMode = "calendars";
       state.settings.indSet = id;
       indSetDraft = null;
-      save(); render(); renderIndicatorsSheet(ov); refreshAppearance();
+      save(); requestRender(); renderIndicatorsSheet(ov); refreshAppearance();
       toast("Set added");
     };
   }
@@ -289,7 +289,7 @@ function bindIndicatorsSheet(ov) {
       if (state.settings.indSingle.toLowerCase() === c.toLowerCase()) return;
       state.settings.indSingle = c;
       state.settings.indMode = "single";
-      save(); render(); renderIndicatorsSheet(ov); refreshAppearance();
+      save(); requestRender(); renderIndicatorsSheet(ov); refreshAppearance();
     };
   });
 
@@ -304,7 +304,7 @@ function bindIndicatorsSheet(ov) {
         if (i >= 0) state.settings.hidden.splice(i, 1);
         else state.settings.hidden.push(id);
       }
-      save(); render(); renderIndicatorsSheet(ov); refreshAppearance();
+      save(); requestRender(); renderIndicatorsSheet(ov); refreshAppearance();
     };
   });
 }
@@ -373,7 +373,7 @@ function bindAppearancePage(page, box) {
         var m = b.getAttribute("data-mode");
         if (state.settings.theme === m) return;
         state.settings.theme = m;
-        save(); applyTheme(); render(); refreshAppearance();
+        save(); applyTheme(); requestRender();
       };
     });
     box.querySelectorAll("[data-acc]").forEach(function (b) {
@@ -389,7 +389,7 @@ function bindAppearancePage(page, box) {
         } else {
           state.settings.preset = "";
         }
-        save(); applyTheme(); refreshAppearance();
+        save(); applyTheme(); requestRender();
       };
     });
     box.querySelectorAll("[data-ind]").forEach(function (b) {
@@ -397,7 +397,7 @@ function bindAppearancePage(page, box) {
         var k = b.getAttribute("data-ind");
         if (state.settings.indStyle === k) return;
         state.settings.indStyle = k;
-        save(); applyTheme(); render(); refreshAppearance();
+        save(); applyTheme(); requestRender();
       };
     });
     box.querySelectorAll("[data-day-color]").forEach(function (b) {
@@ -405,7 +405,7 @@ function bindAppearancePage(page, box) {
         var k = b.getAttribute("data-day-color");
         if (state.settings.dayColor === k) return;
         state.settings.dayColor = k;
-        save(); applyTheme(); render(); refreshAppearance();
+        save(); applyTheme(); requestRender();
       };
     });
     var themesRow = box.querySelector("#themesRow");
@@ -576,10 +576,13 @@ function bindThemesSheet(ov) {
 function selectTheme(id) {
   var p = themeById(id);
   if (!p) return;
+  // Re-tapping the theme that is already active is a no-op: rebuilding the
+  // whole gallery (44+ cards) for it was pure jank.
+  if (state.settings.preset === id) return;
   state.settings.preset = id;
   state.settings.accent = p.accent;
   if (p.mode) state.settings.theme = p.mode;
-  save(); applyTheme(); render(); refreshAppearance();
+  save(); applyTheme(); requestRender();
 }
 
 function openThemesSheet() {

@@ -1,24 +1,57 @@
 // ===== Calendar =====
+// Shared empty list so a day with no entries costs no allocation per cell.
+var NO_ENTRIES = [];
+
+// Events keyed by date and lectures keyed by weekday for a month, built once
+// per render. The month grid and the month agenda both read from this instead
+// of re-scanning the whole state per cell.
+function monthBuckets(y, m) {
+  var b = {
+    evsByDate: {}, lecsByDow: {}, dayIso: [""], dayDow: [0],
+    dowCount: [0, 0, 0, 0, 0, 0, 0], total: new Date(y, m + 1, 0).getDate()
+  };
+  state.events.forEach(function (e) {
+    (b.evsByDate[e.date] || (b.evsByDate[e.date] = [])).push(e);
+  });
+  state.lectures.forEach(function (l) {
+    (b.lecsByDow[l.weekday] || (b.lecsByDow[l.weekday] = [])).push(l);
+  });
+  Object.keys(b.lecsByDow).forEach(function (d) {
+    b.lecsByDow[d].sort(function (a, c) { return a.time < c.time ? -1 : 1; });
+  });
+  for (var d = 1; d <= b.total; d++) {
+    var dt = new Date(y, m, d);
+    b.dayIso[d] = iso(dt);
+    b.dayDow[d] = dt.getDay();
+    b.dowCount[b.dayDow[d]]++;
+  }
+  return b;
+}
+
 function lecturesOn(dow, useFilter) {
   return state.lectures.filter(function (l) { return l.weekday === dow && (!useFilter || !filterId || l.subjectId === filterId); })
     .sort(function (a, b) { return a.time < b.time ? -1 : 1; });
 }
 
-function cellLines(date, dow) {
+// Lines shown inside one month cell. `evs` and `lecs` are the day's entries and
+// the day's weekday lectures, already bucketed by renderCalendar, so a cell
+// never re-scans the whole state.
+function cellLines(evs, lecs) {
   var lines = [];
-  var day = iso(date);
-  state.events.filter(function (e) { return e.date === day && (!filterId || e.subjectId === filterId) && !indicatorHidden(e.subjectId); })
-    .forEach(function (e) {
-      lines.push({ color: colorOf(e.subjectId), text: subjectName(e.subjectId), cls: "" });
-      lines.push({ text: kindLabel(e.kind) + (e.note ? " · " + e.note : ""), cls: "tag", color: colorOf(e.subjectId) });
-    });
-  var list = lecturesOn(dow, true).filter(function (l) { return !indicatorHidden(l.subjectId); });
+  evs.forEach(function (e) {
+    if ((filterId && e.subjectId !== filterId) || indicatorHidden(e.subjectId)) return;
+    var c = colorOf(e.subjectId);
+    lines.push({ color: c, text: subjectName(e.subjectId), cls: "" });
+    lines.push({ text: kindLabel(e.kind) + (e.note ? " · " + e.note : ""), cls: "tag", color: c });
+  });
   var done = {};
-  list.forEach(function (l) {
+  lecs.forEach(function (l) {
+    if ((filterId && l.subjectId !== filterId) || indicatorHidden(l.subjectId)) return;
     if (done[l.subjectId]) return;
     done[l.subjectId] = true;
     lines.push({ color: colorOf(l.subjectId), text: subjectName(l.subjectId), cls: "" });
-    list.filter(function (x) { return x.subjectId === l.subjectId; }).forEach(function (x) {
+    lecs.forEach(function (x) {
+      if (x.subjectId !== l.subjectId) return;
       lines.push({ text: ((TAGS[x.kind] || "Lec") + " " + (x.place || "")).trim(), cls: "pl" });
     });
   });
@@ -29,22 +62,23 @@ function cellLines(date, dow) {
 // Entries are real occurrences for the visible month: one-off events plus every
 // weekly lecture/section/lab that falls on a day in that month.
 function agendaItemsForMonth(y, m) {
-  var dim = new Date(y, m + 1, 0).getDate();
+  var b = monthBuckets(y, m);
   var out = [];
-  for (var d = 1; d <= dim; d++) {
-    var date = new Date(y, m, d), key = iso(date);
-    state.events.forEach(function (e) {
-      if (e.date !== key || (filterId && e.subjectId !== filterId) || indicatorHidden(e.subjectId)) return;
+  for (var d = 1; d <= b.total; d++) {
+    var date = new Date(y, m, d);
+    var evs = b.evsByDate[b.dayIso[d]];
+    if (evs) evs.forEach(function (e) {
+      if ((filterId && e.subjectId !== filterId) || indicatorHidden(e.subjectId)) return;
       out.push({ date: date, sid: e.subjectId, kind: e.kind, time: e.time || "", detail: e.note || "" });
     });
-    lecturesOn(date.getDay(), true).forEach(function (l) {
-      if (indicatorHidden(l.subjectId)) return;
+    (b.lecsByDow[b.dayDow[d]] || NO_ENTRIES).forEach(function (l) {
+      if ((filterId && l.subjectId !== filterId) || indicatorHidden(l.subjectId)) return;
       out.push({ date: date, sid: l.subjectId, kind: l.kind, time: l.time || "", detail: l.place || "" });
     });
   }
-  out.sort(function (a, b) {
-    if (a.date.getTime() !== b.date.getTime()) return a.date - b.date;
-    var at = a.time || "99:99", bt = b.time || "99:99";
+  out.sort(function (a, c) {
+    if (a.date.getTime() !== c.date.getTime()) return a.date - c.date;
+    var at = a.time || "99:99", bt = c.time || "99:99";
     return at < bt ? -1 : at > bt ? 1 : 0;
   });
   return out;
@@ -140,40 +174,48 @@ function renderCalendar() {
     });
   }
   var first = new Date(y, m, 1).getDay();
-  var total = new Date(y, m + 1, 0).getDate();
+  // Bucket the month once (events by date, lectures by weekday) and total the
+  // per-subject counts the filter chips show. The old version re-filtered the
+  // whole state for every cell and again for every chip, on every render.
+  var b = monthBuckets(y, m);
+  var total = b.total;
   var cells = Math.ceil((first + total) / 7) * 7;
-  var dim = total, monthStart = iso(new Date(y, m, 1)), monthEnd = iso(new Date(y, m, dim));
-  function eventsInMonth(sid) {
-    return state.events.filter(function (e) {
-      return (!sid || e.subjectId === sid) && e.date >= monthStart && e.date <= monthEnd;
-    }).length;
+
+  var monthCount = { all: 0 };
+  for (var d = 1; d <= total; d++) {
+    var dl = b.evsByDate[b.dayIso[d]];
+    if (dl) for (var di = 0; di < dl.length; di++) {
+      var esid = dl[di].subjectId;
+      monthCount[esid] = (monthCount[esid] || 0) + 1;
+      monthCount.all++;
+    }
   }
-  function lecturesInMonth(sid) {
-    var count = 0;
-    state.lectures.forEach(function (l) {
-      if (sid && l.subjectId !== sid) return;
-      for (var d = 1; d <= dim; d++) if (new Date(y, m, d).getDay() === l.weekday) count++;
-    });
-    return count;
-  }
+  state.lectures.forEach(function (l) {
+    var occ = b.dowCount[l.weekday];
+    monthCount[l.subjectId] = (monthCount[l.subjectId] || 0) + occ;
+    monthCount.all += occ;
+  });
+  function chipsCount(sid) { return sid ? (monthCount[sid] || 0) : monthCount.all; }
 
   for (var i = 0; i < cells; i++) {
     var n = i - first + 1;
     if (n < 1 || n > total) { html += '<div class="cell blank"></div>'; continue; }
     var isToday = y === today.getFullYear() && m === today.getMonth() && n === today.getDate();
-    var lines = cellLines(new Date(y, m, n), i % 7);
+    var lines = cellLines(b.evsByDate[b.dayIso[n]] || NO_ENTRIES, b.lecsByDow[b.dayDow[n]] || NO_ENTRIES);
     var tint = lines.length ? lines[0].color : "";       // first entry colours the whole cell
+    // One colour per cell: the tint shades are derived from --cr in the
+    // stylesheet, so a cell is 3 style properties instead of 6 plus a gradient.
     html += '<button class="cell' + (isToday ? " today" : "") + (tint ? " has" : "") + '"' +
-      (tint ? ' style="--c:' + tint + ';--ink:' + accentInk(tint) + ';--tint:' + tint + '26;--tint-soft:' + tint + '14;--tint-strong:' + tint + '3d;background:linear-gradient(0deg,' + tint + '26,' + tint + '26),var(--cell-tint)"' : "") +
+      (tint ? ' style="--c:' + tint + ';--cr:' + rgbTriplet(tint) + ';--ink:' + accentInk(tint) + '"' : "") +
       ' data-d="' + n + '"><span class="dn">' + n + "</span>";
     if (lines.length) {
       html += '<span class="evs">';
       lines.forEach(function (ln) {
         if (ln.cls === "") {
-          html += '<i class="ev" style="--c:' + ln.color + ';--ink:' + accentInk(ln.color) + '">' +
-            '<b style="background:' + ln.color + '"></b><span class="evt">' + esc(ln.text) + "</span></i>";
+          html += '<i class="ev" style="--c:' + ln.color + '">' +
+            "<b></b><span class=\"evt\">" + esc(ln.text) + "</span></i>";
         } else {
-          html += '<i class="ev ' + ln.cls + '"' + (ln.color ? ' style="color:' + ln.color + '"' : "") + ">" + esc(ln.text) + "</i>";
+          html += '<i class="ev ' + ln.cls + '"' + (ln.color ? ' style="--c:' + ln.color + '"' : "") + ">" + esc(ln.text) + "</i>";
         }
       });
       html += "</span>";
@@ -183,13 +225,13 @@ function renderCalendar() {
   html += "</div>";
   if (state.settings.calendarFilters !== false) {
     html += '<div class="chips"><button class="chip' + (filterId ? "" : " on") + '" data-f="">All<span class="n">' +
-      (eventsInMonth(null) + lecturesInMonth(null)) + "</span></button>";
+      chipsCount(null) + "</span></button>";
     state.subjects.forEach(function (s) {
       var c = colorOf(s.id);
       html += '<button class="chip sub' + (filterId === s.id ? " on" : "") + '" data-f="' + s.id +
-        '" style="--tint:linear-gradient(0deg,' + c + '26,' + c + '26),var(--chip-tint);--on:linear-gradient(0deg,' + c + '4d,' + c + '4d),var(--chip-tint);border-color:' + c + '66">' +
-        '<i style="background:' + c + '"></i>' + esc(s.name) +
-        '<span class="n">' + (eventsInMonth(s.id) + lecturesInMonth(s.id)) + "</span></button>";
+        '" style="--c:' + c + ';--cr:' + rgbTriplet(c) + '">' +
+        "<i></i>" + esc(s.name) +
+        '<span class="n">' + chipsCount(s.id) + "</span></button>";
     });
     html += "</div>";
   }

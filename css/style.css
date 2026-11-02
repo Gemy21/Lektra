@@ -209,14 +209,14 @@ body{display:flex;justify-content:center;align-items:center}
 .cell.blank{background:none;box-shadow:none;border-color:transparent;pointer-events:none;cursor:default}
 .cell.today,
 .cell.today.has{border-color:var(--t1)}
-.cell.has{border-color:transparent}                             /* day color paints the fill */
+.cell.has{--tint:rgba(var(--cr,255,255,255),.15);--tint-soft:rgba(var(--cr,255,255,255),.08);--tint-strong:rgba(var(--cr,255,255,255),.24);border-color:transparent;background:linear-gradient(0deg,var(--tint),var(--tint)),var(--cell-tint)}   /* day color paints the fill; tint shades derive from --cr */
 #app[data-day-color="fill"] .cell.has{border-color:var(--c)}    /* Fill is the only framed style */
 #app[data-quiet="1"] #screen,
 #app[data-quiet="1"] .box.search{filter:grayscale(1)}
 .cell .evs{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-width:0;margin-top:auto}
 .ev{display:flex;align-items:center;gap:.7cqw;font-size:1.8cqw;color:var(--c,var(--t5));font-style:normal;white-space:nowrap;overflow:hidden;margin-top:.5cqw;line-height:1.3;max-width:100%;min-width:0}
 .ev .evt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ev b{width:1.3cqw;height:1.3cqw;border-radius:.4cqw;flex:none}
+.ev b{width:1.3cqw;height:1.3cqw;border-radius:.4cqw;flex:none;background:var(--c)}
 .ev.pl,.ev.tag{display:block;padding-left:1.3cqw;margin-top:0;text-overflow:ellipsis}
 .ev.tag{opacity:.72}
 .ev.pl{color:var(--t6)}
@@ -226,8 +226,9 @@ body{display:flex;justify-content:center;align-items:center}
 .chip i{width:1.5cqw;height:1.5cqw;border-radius:50%;margin-right:1.4cqw;background:var(--t5);flex:none}
 .chip .n{font-size:2.6cqw;font-weight:600;color:var(--t2);background:var(--f12);border-radius:3cqw;padding:.4cqw 1.8cqw;margin-left:.9cqw}
 .chip.on .n{background:var(--f18);color:var(--t1)}
-.chip.sub{background:var(--tint,transparent);color:var(--t1)}
+.chip.sub{--tint:linear-gradient(0deg,rgba(var(--cr,255,255,255),.15),rgba(var(--cr,255,255,255),.15)),var(--chip-tint);--on:linear-gradient(0deg,rgba(var(--cr,255,255,255),.3),rgba(var(--cr,255,255,255),.3)),var(--chip-tint);background:var(--tint);border-color:rgba(var(--cr,255,255,255),.4);color:var(--t1)}
 .chip.sub.on{background:var(--on,var(--tint));font-weight:600}
+.chip.sub i{background:var(--c)}
 .chip.sub .n{background:rgba(0,0,0,.25);color:rgba(255,255,255,.9)}
 #bar{display:flex;gap:2cqw;align-items:center;margin-top:2.5cqw;flex:none;position:relative;z-index:4}
 .plans{flex:1;min-width:0;height:12cqw;border-radius:6cqw;border:1px solid var(--line);background:var(--f06);box-shadow:inset 0 1px 0 var(--bevel),inset 0 -1px 0 var(--shade);color:var(--t6);font-size:3.3cqw;display:flex;align-items:center;overflow:hidden;position:relative}
@@ -734,7 +735,9 @@ button.cam-thumb{cursor:pointer;-webkit-tap-highlight-color:transparent}
 #app[data-ind="none"] .cell .evs{display:none}
 
 /* Month options — day-cell paint, number placement and text size */
-#app[data-month-style="frosted"] .cell{--mbg:var(--f05);background:var(--f05);box-shadow:inset 0 1px 0 var(--bevel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+/* Frosted cells keep the light surface and bevel; the blur was dropped — a
+   backdrop-filter per cell (42 of them) forced a separate backdrop pass each. */
+#app[data-month-style="frosted"] .cell{--mbg:var(--f05);background:var(--f05);box-shadow:inset 0 1px 0 var(--bevel)}
 #app[data-month-style="frosted"] .cell.has{background:linear-gradient(0deg,var(--tint,transparent),var(--tint,transparent)),var(--f05)!important}
 #app[data-month-style="soft"] .cell{--mbg:var(--f05);background:var(--f05);box-shadow:none;border-radius:3.4cqw}
 #app[data-month-style="soft"] .cell.has{background:linear-gradient(0deg,var(--tint-soft,transparent),var(--tint-soft,transparent)),var(--f05)!important}
@@ -824,7 +827,7 @@ button.cam-thumb{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .sw.on::after{transform:translateX(4.4cqw);background:var(--accent-ink,#fff)}
 
 /* Theme gallery (stacked sheet) */
-.sheet-scrim{position:absolute;inset:0;z-index:6;background:var(--scrim);backdrop-filter:blur(8px) saturate(.95);-webkit-backdrop-filter:blur(8px) saturate(.95);animation:fadeIn .2s ease-out}
+.sheet-scrim{position:absolute;inset:0;z-index:6;background:var(--scrim);animation:fadeIn .2s ease-out}   /* #modal already blurs what's behind it */
 @keyframes fadeIn{from{opacity:0}}
 .box.overlay{position:absolute;left:0;right:0;bottom:0;z-index:7;max-height:88%;border-radius:8cqw 8cqw 0 0;border-top:1px solid var(--line);background:var(--sheet);backdrop-filter:blur(36px) saturate(1.3);-webkit-backdrop-filter:blur(36px) saturate(1.3);box-shadow:0 -3cqw 9cqw var(--shadow),inset 0 1px 0 var(--f07);padding:2.5cqw 5cqw calc(4.5cqw + var(--safe-bottom));overflow-y:auto;overscroll-behavior:contain;color:var(--t1);animation:sheetUp .3s cubic-bezier(.2,.9,.25,1)}
 .ovhead{display:flex;align-items:center;gap:3cqw;margin:4.4cqw 0 1cqw}

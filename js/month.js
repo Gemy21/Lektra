@@ -126,6 +126,11 @@ function monthOptionsPage() {
     "</div>";
 }
 
+// Settings whose value is baked into the calendar's markup rather than exposed
+// as a CSS variable. Everything else here is just a data attribute on #app, so
+// applyTheme alone repaints it with no rebuild.
+var MO_BAKED_IN_MARKUP = { weekdayLabels: 1, weekdayLetters: 1, calendarFilters: 1 };
+
 function bindMonthOptions(box) {
   if (!box) return;
 
@@ -134,7 +139,7 @@ function bindMonthOptions(box) {
       var k = b.getAttribute("data-ms");
       if (state.settings.monthStyle === k) return;
       state.settings.monthStyle = k;
-      save(); applyTheme(); render();
+      save(); applyTheme();
     };
   });
 
@@ -143,7 +148,8 @@ function bindMonthOptions(box) {
       var k = b.getAttribute("data-ml");
       if (state.settings.monthLayout === k) return;
       state.settings.monthLayout = k;
-      save(); applyTheme(); render();
+      save(); applyTheme();
+      requestRender();   // the layout changes the calendar's structure
     };
   });
 
@@ -153,7 +159,8 @@ function bindMonthOptions(box) {
       var val = b.getAttribute("data-mo-val");
       if (state.settings[key] === val) return;
       state.settings[key] = val;
-      save(); applyTheme(); render();
+      save(); applyTheme();
+      if (MO_BAKED_IN_MARKUP[key]) requestRender();
     };
   });
 
@@ -164,7 +171,7 @@ function bindMonthOptions(box) {
       // A hidden filter bar must never leave an invisible filter applied.
       if (key === "calendarFilters" && !state.settings.calendarFilters) filterId = null;
       save(); applyTheme();
-      if (key === "calendarFilters") render();
+      if (MO_BAKED_IN_MARKUP[key]) requestRender();
     };
   });
 }
