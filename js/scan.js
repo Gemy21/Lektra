@@ -410,6 +410,7 @@ function openAttachSheet() {
   );
   var box = document.getElementById("box");
   box.classList.add("attachsheet");
+  box.setAttribute("aria-label", "Add a timetable photo");
   var handle = box.querySelector(".handle");
   if (handle) handle.remove();
   var btns = box.querySelector(".btns");
@@ -774,9 +775,9 @@ function scanReview(entries, opts) {
   html += '<div id="scanList">';
 
   entries.forEach(function (e, n) {
-    html += '<div class="srow"><div class="shead"><input type="checkbox" class="pick" checked>' +
+    html += '<div class="srow"><div class="shead"><input type="checkbox" class="pick" checked aria-label="Include class ' + (n + 1) + '">' +
       '<span class="sidx">' + (n + 1) + "</span>" +
-      '<input class="sname" value="' + esc(e.subject) + '" placeholder="Subject"></div>' +
+      '<input class="sname" value="' + esc(e.subject) + '" placeholder="Subject" aria-label="Subject"></div>' +
       '<div class="sbody">' +
       '<span class="flab">Type</span><div class="kseg">' +
       ["lecture", "section", "lab"].map(function (k) {
@@ -787,9 +788,9 @@ function scanReview(entries, opts) {
         return '<button type="button" class="dp' + (e.day === idx ? " on" : "") + '" data-d="' + idx + '">' + d + "</button>";
       }).join("") + "</div>" +
       '<div class="sline"><div><span class="flab">Time</span>' +
-      '<input class="stime" type="time" value="' + esc(e.time) + '"></div>' +
+      '<input class="stime" type="time" value="' + esc(e.time) + '" aria-label="Time"></div>' +
       '<div><span class="flab">Place</span>' +
-      '<input class="splace" value="' + esc(e.place) + '" placeholder="Hall 3"></div></div>' +
+      '<input class="splace" value="' + esc(e.place) + '" placeholder="Hall 3" aria-label="Place"></div></div>' +
       "</div></div>";
   });
 

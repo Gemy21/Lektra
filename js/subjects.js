@@ -1,6 +1,6 @@
 // ===== Subjects (folders) =====
 function addSubject(after) {
-  openModal('<h2>New subject</h2><label>Name</label><input id="fName" placeholder="e.g. Data Structures">', function () {
+  openModal('<h2>New subject</h2><label for="fName">Name</label><input id="fName" placeholder="e.g. Data Structures">', function () {
     var name = document.getElementById("fName").value.trim();
     if (!name) return false;
     var s = { id: uid(), name: name, files: [] };
@@ -18,7 +18,7 @@ function renderSubjects() {
   var html = '<div class="title"><h1>Subjects</h1></div>';
   if (!state.subjects.length) html += '<div class="empty">No subjects yet</div>';
   state.subjects.forEach(function (s) {
-    html += '<div class="row folder" data-id="' + s.id + '"><span class="fico">' + FOLDER_ICON + '</span><div class="i"><b>' + esc(s.name) + "</b><div>" + s.files.length + ' files</div></div><button class="x" data-del="' + s.id + '">✕</button></div>';
+    html += '<div class="row folder" data-id="' + s.id + '"><span class="fico">' + FOLDER_ICON + '</span><div class="i"><b>' + esc(s.name) + "</b><div>" + s.files.length + ' files</div></div><button class="x" data-del="' + s.id + '" aria-label="Delete subject">✕</button></div>';
   });
   html += '<button class="add" id="addSub">+ Add subject</button>';
   html += '<button class="add scan" id="scanSub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Scan a timetable photo</button>';
@@ -54,7 +54,7 @@ function renderFolder(main, s) {
   if (!s.files.length) html += '<div class="empty">No files yet</div>';
   s.files.forEach(function (f, i) {
     html += '<div class="row file" data-open="' + i + '"><span style="font-size:20px">📄</span><div class="i">' + esc(f.name) +
-      "<div>On this device ✓" + (f.size ? " · " + fmtSize(f.size) : "") + '</div></div><button class="x" data-i="' + i + '">✕</button></div>';
+      "<div>On this device ✓" + (f.size ? " · " + fmtSize(f.size) : "") + '</div></div><button class="x" data-i="' + i + '" aria-label="Delete file">✕</button></div>';
   });
   html += '<button class="add" id="pick">+ Add lecture files</button><input type="file" id="file" multiple style="display:none">';
   if (s.files.length) html += '<div class="muted" style="margin-top:3cqw">' + s.files.length + " file" + (s.files.length > 1 ? "s" : "") + (total ? " · " + fmtSize(total) : "") + "</div>";

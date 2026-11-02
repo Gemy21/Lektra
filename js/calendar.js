@@ -612,7 +612,7 @@ function renderDay() {
   var html = '<div class="dhead">' +
     '<div class="dbadge"><b>' + date.getDate() + "</b><i>" + MONTHS[date.getMonth()].slice(0, 3).toUpperCase() + "</i></div>" +
     '<div class="dtitles">' +
-      '<button class="dclose" id="dClose" aria-label="Close day view">' +
+      '<button class="dclose" id="dClose" aria-label="Close day view: ' + titleText + '">' +
         "<h1>" + titleText + "</h1>" + D_ICON.down +
       "</button>" +
       "<span>" + esc(isToday ? date.getDate() + " " + MONTHS[date.getMonth()] : dayAwayLabel(date)) + "</span>" +
@@ -831,13 +831,15 @@ function addLecture(dow, pre) {
     '<div class="erow">' + subjChips() + "</div>" +
     '<div class="efields">' +
       '<div id="wk"><label>Day (repeats weekly)</label><div class="days">' +
-        SHORT.map(function (d, i) { return '<button class="dp' + (i === dow ? " on" : "") + '" data-day="' + i + '">' + d + "</button>"; }).join("") +
-      '</div><label>Place</label><input id="fPlace" placeholder="Hall / building, e.g. Hall 3"></div>' +
-      '<div id="dt"><label>Date</label><input id="fDate" type="date"><label>Note (optional)</label><input id="fNote" placeholder="e.g. Section, Lab, Project"></div>' +
-      '<label>Time</label><input id="fTime" type="time">' +
+        SHORT.map(function (d, i) {
+          return '<button class="dp' + (i === dow ? " on" : "") + '" data-day="' + i + '">' + d + "</button>";
+        }).join("") +
+      '</div><label for="fPlace">Place</label><input id="fPlace" placeholder="Hall / building, e.g. Hall 3"></div>' +
+      '<div id="dt"><label for="fDate">Date</label><input id="fDate" type="date"><label for="fNote">Note (optional)</label><input id="fNote" placeholder="e.g. Section, Lab, Project"></div>' +
+      '<label for="fTime">Time</label><input id="fTime" type="time">' +
     "</div>" +
     '<div class="efoot"><button class="ecancel" id="eCancel">Cancel</button>' +
-      '<button class="eok" id="eOk" aria-label="Add entry">' + E_ICON.plus + "</button></div>";
+      '<button class="eok" id="eOk" aria-label="' + (editRef ? "Save changes" : "Add entry") + '">' + E_ICON.plus + "</button></div>";
 
   openSheet(html);
   var box = document.getElementById("box");

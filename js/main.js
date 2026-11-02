@@ -1,7 +1,7 @@
 // ===== Buttons + start =====
 // Bumped together with CACHE in sw.js, so an outdated install is easy to spot:
 // Settings -> More shows this number at the bottom.
-var APP_BUILD = "v186";
+var APP_BUILD = "v187";
 
 function render() {
   // Any render satisfies a deferred one.
@@ -251,14 +251,17 @@ function openSettings() { settingsPage("main"); }
 
 function settingsPage(page) {
   var box = document.getElementById("box");
+  rememberFocus();
   box.className = "box" + (page === "filters" ? " filtersheet" : "");
   box.setAttribute("data-page", page);
+  box.removeAttribute("aria-label");
   box.innerHTML = '<div class="handle"></div>' + (SET_PAGES[page] || SET_PAGES.main)();
   box.scrollTop = 0;
   resetDrag(box);
   dragToClose(box);
   document.getElementById("modal").className = "show" + (page === "filters" ? " filter-mode" : "");
   document.getElementById("modal").onclick = function (e) { if (e.target === this) closeModal(); };
+  prepareDialog(box);
 
   box.querySelectorAll("[data-set]").forEach(function (b) {
     b.onclick = function () {
@@ -376,6 +379,12 @@ function clearAll() {
     jobs.push(idbAll("files").then(function (all) {
       return Promise.all(all.map(function (r) { return idbDel("files", r.id); }));
     }).catch(function () {}));
+    // Scanned-timetable results are derived data, but "clear all" promises to
+    // remove everything. Leaving them behind also meant the next upload of the
+    // same photo skipped the AI call and showed the previous result.
+    jobs.push(idbAll("scans").then(function (all) {
+      return Promise.all(all.map(function (r) { return idbDel("scans", r.key); }));
+    }).catch(function () {}));
   }
   return Promise.all(jobs);
 }
@@ -411,7 +420,7 @@ if ("serviceWorker" in navigator) {
     window.location.reload();
   });
   window.addEventListener("load", function () {
-    navigator.serviceWorker.register("sw.js").catch(function () {});
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(function () {});
   });
 }
 

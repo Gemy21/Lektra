@@ -155,6 +155,65 @@ function accentInk(hex) {
   return lum > 0.6 ? "#111114" : "#fff";
 }
 
+// Accent text needs to stay readable on the app paint. Some theme accents
+// (the default blue on a dark sheet, for example) fall just under WCAG AA at
+// the small sizes used for chips and links, so lighten or darken a copy of the
+// accent until it clears 4.5:1. Surfaces keep the real accent; only text uses
+// this token.
+function colorLum(hex) {
+  var c = parseCssColor(hex);
+  var ch = [c[0], c[1], c[2]].map(function (v) {
+    v = v / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+}
+
+function contrastRatio(a, b) {
+  var x = colorLum(a), y = colorLum(b);
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
+function mixHex(a, b, t) {
+  var x = parseCssColor(a), y = parseCssColor(b);
+  function h(n) { return ("0" + Math.round(Math.max(0, Math.min(255, n))).toString(16)).slice(-2); }
+  return "#" + h(x[0] * (1 - t) + y[0] * t) + h(x[1] * (1 - t) + y[1] * t) + h(x[2] * (1 - t) + y[2] * t);
+}
+
+function accentTextAgainst(hex, surfaces) {
+  if (!/^#[0-9a-f]{6}$/i.test(String(hex || ""))) return hex;
+  function ok(c) {
+    for (var i = 0; i < surfaces.length; i++) {
+      if (contrastRatio(c, surfaces[i]) < 4.5) return false;
+    }
+    return true;
+  }
+  if (ok(hex)) return hex;
+  var target = contrastRatio("#000000", surfaces[0]) >= contrastRatio("#ffffff", surfaces[0]) ? "#000000" : "#ffffff";
+  for (var i = 1; i <= 10; i++) {
+    var mixed = mixHex(hex, target, i / 10);
+    if (ok(mixed)) return mixed;
+  }
+  return target;
+}
+
+function accentText(hex, bg) {
+  if (!/^#[0-9a-f]{6}$/i.test(String(hex || ""))) return hex;
+  // Test against the lightest common text surface (a 12% white/black sheen on
+  // the app paint) and the same surface tinted with the accent (chips use
+  // --accent-soft), not the bare background.
+  var surface = mixHex(bg, colorLum(bg) < 0.5 ? "#ffffff" : "#000000", 0.12);
+  return accentTextAgainst(hex, [surface, blendCssColor(hex + "24", surface)]);
+}
+
+// Text sitting on --accent-soft while the composer scrim dims the page behind
+// it (the "Plan today" pill) needs a slightly stronger ink.
+function accentTextOnScrim(hex, bg) {
+  var surface = mixHex(bg, colorLum(bg) < 0.5 ? "#ffffff" : "#000000", 0.12);
+  var scrimmed = blendCssColor(colorLum(bg) < 0.5 ? "rgba(0,0,0,.38)" : "rgba(0,0,0,.1)", surface);
+  return accentTextAgainst(hex, [blendCssColor(hex + "24", scrimmed)]);
+}
+
 // "255,59,48" for a colour, for rgba(var(--cr),.15) in the stylesheet. CSS
 // cannot grow an alpha suffix onto a var() colour — var(--c)26 parses as two
 // tokens, not one 8-digit hex — so tinted surfaces carry this triplet too.
@@ -240,6 +299,8 @@ function applyTheme() {
   root.setAttribute("data-theme", mode);
   root.style.setProperty("--accent", accent);
   root.style.setProperty("--accent-ink", accentInk(accent));
+  root.style.setProperty("--accent-text", accentText(accent, appBg));
+  root.style.setProperty("--accent-on-scrim", accentTextOnScrim(accent, appBg));
   root.style.setProperty("--accent-soft", accent + "24");
   root.style.setProperty("--app-bg", appBg);
   var app = document.getElementById("app");

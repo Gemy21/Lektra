@@ -3,7 +3,9 @@ var SEARCH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 
 function openSearch() {
   var box = document.getElementById("box");
+  rememberFocus();
   box.className = "box search";
+  box.removeAttribute("aria-label");
   box.innerHTML =
     '<div class="sbar">' +
       '<span class="qicon">' + SEARCH_ICON + "</span>" +
@@ -20,6 +22,8 @@ function openSearch() {
   dragToClose(box);
   document.getElementById("modal").className = "show search-mode";
   document.getElementById("modal").onclick = function (e) { if (e.target === this) closeModal(); };
+  box.setAttribute("aria-label", "Search");
+  prepareDialog(box);
 
   var q = document.getElementById("fQ"), res = document.getElementById("qRes"), type = "all";
 

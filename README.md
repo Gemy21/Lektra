@@ -75,6 +75,8 @@ Seven entry types, split into two very different behaviours:
   `Quiz` hides the weekday picker and reveals the date field, and vice versa.
 - **Tap any day** to open a day sheet listing everything on it — the weekday's classes
   and any dated entries — with a ✕ to delete each one and **+ Add entry** to add more.
+- **Long-press an entry** (or right-click it) for Select, Edit, Move, Priority, Duplicate
+  and Delete. Editing reopens the same form with its current values filled in.
 - Deleting a subject cleans up after itself: its lectures, its dated entries **and** its
   stored files all go together.
 
@@ -88,7 +90,8 @@ Seven entry types, split into two very different behaviours:
 ### Scan a timetable photo (AI import)
 Typing out a whole college timetable is tedious, so Lektra can read one from a photo.
 
-1. Tap **📷 Scan a timetable photo** on the Subjects screen (or in Settings).
+1. Tap **📷 Scan a timetable photo** on the Subjects screen, in Settings, or the paperclip
+   in the plan bar. All three open the same photo picker.
 2. Pick or take a photo of your timetable.
 3. The image is shrunk to 1600 px, sent to a vision model, and asked for **strict JSON**.
 4. You get a **review screen** — every detected class as an editable row with a checkbox
@@ -459,8 +462,6 @@ Honest list, verified by testing the parser directly:
   (`ar-EG` / `en-US`), not the on-screen strings — so the interface is English even when
   you speak Arabic.
 - **`x/y` dates are read as day/month** (Egyptian convention), so `5/3` means 5 March.
-- **There is no edit.** Entries can be created and deleted, but not changed — delete and
-  re-add.
 - **Lecture files are per-device.** They are not part of the JSON backup and don't sync
   between devices.
 - **Reminders can't fire while the app is fully closed.** A web app has no way to schedule
