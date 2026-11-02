@@ -87,12 +87,12 @@ var DEV_ICON = {
 };
 
 // `back` is true (returns to the main settings) or the page to return to.
-// Sub-pages get both a chevron back button and a close button, like Appearance.
+// Sub-pages get a chevron back button. There is deliberately no close (x)
+// button: the sheet is dismissed by dragging it down or tapping outside.
 function setHead(title, back) {
   return '<div class="shead">' +
     (back ? '<button class="sback plain" data-set="back" data-back="' + (back === true ? "main" : back) + '" aria-label="Back">' + SET_ICON.back + "</button>" : "") +
     "<h2>" + title + "</h2>" +
-    '<button class="sx" data-set="close" aria-label="Close">' + SET_ICON.x + "</button>" +
     "</div>";
 }
 
