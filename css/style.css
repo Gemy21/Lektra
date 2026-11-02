@@ -209,7 +209,13 @@ body{display:flex;justify-content:center;align-items:center}
 .cell.today.has{border-color:var(--t1)}
 .cell.has{--tint:rgba(var(--cr,255,255,255),.15);--tint-soft:rgba(var(--cr,255,255,255),.08);--tint-strong:rgba(var(--cr,255,255,255),.24);border-color:transparent;background:linear-gradient(0deg,var(--tint),var(--tint)),var(--cell-tint)}   /* day color paints the fill; tint shades derive from --cr */
 #app[data-day-color="fill"] .cell.has{border-color:var(--c)}    /* Fill is the only framed style */
-#app[data-quiet="1"] #screen,
+/* Quiet washes the app to greyscale, but filtering #screen would create a
+   stacking context, trapping the composer (a child of #screen) underneath the
+   composer scrim — blurred and unable to take a tap. Filter the painted
+   surfaces instead, so layering stays intact. */
+#app[data-quiet="1"] .handle,
+#app[data-quiet="1"] .round.top,
+#app[data-quiet="1"] #main,
 #app[data-quiet="1"] .box.search{filter:grayscale(1)}
 .cell .evs{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-width:0;margin-top:auto}
 .ev{display:flex;align-items:center;gap:.7cqw;font-size:1.8cqw;color:var(--c,var(--t5));font-style:normal;white-space:nowrap;overflow:hidden;margin-top:.5cqw;line-height:1.3;max-width:100%;min-width:0}
