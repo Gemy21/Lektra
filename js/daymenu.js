@@ -38,6 +38,16 @@ function dayEntryRef(kind, id) {
 
 function dmKey(kind, id) { return kind + ":" + id; }
 
+// A held finger must not leave the page highlighted. CSS opts the day view out
+// of selection; this drops any range the browser managed to create anyway
+// (older iOS builds, or a selection that started before the menu opened).
+function dmClearSelection() {
+  try {
+    var sel = window.getSelection && window.getSelection();
+    if (sel && sel.rangeCount && !sel.isCollapsed) sel.removeAllRanges();
+  } catch (e) {}
+}
+
 function dmRow(action, icon, label, sub, danger) {
   return '<button type="button" class="dm-row' + (danger ? " danger" : "") + '" data-dma="' + action + '" role="menuitem">' +
     '<span class="dm-ic">' + icon + "</span>" +
@@ -127,10 +137,14 @@ function openDayMenu(el) {
 
   closeDayMenu();
   dmCurrent = { kind: kind, id: id, ref: ref, el: el };
+  dmClearSelection();
 
   var app = document.getElementById("app");
   var menu = dmBuildMenu();
   app.appendChild(menu);
+
+  // Belt and braces for browsers that ignore user-select during a long press.
+  menu.addEventListener("selectstart", function (e) { e.preventDefault(); });
 
   var card = menu.querySelector(".dm-card");
   var ar = app.getBoundingClientRect();
@@ -179,6 +193,7 @@ function closeDayMenu() {
   }
   document.removeEventListener("keydown", dmKeydown);
   dmCurrent = null;
+  dmClearSelection();
 }
 
 function dmDuplicate() {
@@ -236,6 +251,7 @@ function dmPriority(level) {
 // ===== Multi-select =====
 function dmSelect() {
   if (!dmCurrent) return;
+  dmClearSelection();
   daySelMode = true;
   daySel[dmKey(dmCurrent.kind, dmCurrent.id)] = true;
   closeDayMenu();
@@ -356,6 +372,16 @@ function bindDayLongPress(root) {
 (function () {
   var main = document.getElementById("main");
   if (!main) return;
+
+  // Stop the browser from painting a text selection on the day views. This is
+  // what turned a held card (and the small finger drift that follows) into a
+  // page-wide highlight that looked like Ctrl+A.
+  main.addEventListener("selectstart", function (e) {
+    var t = e.target;
+    if (t && t.closest && t.closest("input, textarea, [contenteditable]")) return;
+    e.preventDefault();
+  });
+
   main.addEventListener("click", function (e) {
     var row = e.target.closest ? e.target.closest("[data-entry]") : null;
     if (row && row._lpUntil && Date.now() < row._lpUntil) {

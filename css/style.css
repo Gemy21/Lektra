@@ -490,6 +490,12 @@ button.cam-thumb{cursor:pointer;-webkit-tap-highlight-color:transparent}
 #toast{position:absolute;bottom:calc(20cqw + var(--safe-bottom));left:50%;transform:translateX(-50%);background:var(--on);color:var(--on-fg);padding:2.4cqw 4cqw;border-radius:5cqw;font-size:3.4cqw;opacity:0;transition:.3s;pointer-events:none;z-index:9;width:max-content;max-width:88%;text-align:center;line-height:1.35}
 #toast.show{opacity:1}
 /* ===== day entry long-press menu ===== */
+/* A long press on a day entry is the app's gesture, not the browser's. Without
+   this, holding a card (or dragging a few pixels into the menu) starts the
+   browser's own text selection / callout, so tapping "Select" can look like
+   Ctrl+A instead of entering select mode. */
+#main,.dm,#daySelBar{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#main input,#main textarea,#main [contenteditable]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 #dayMenu{position:absolute;inset:0;z-index:12;opacity:0;pointer-events:none;transition:opacity .16s ease}
 #dayMenu.show{opacity:1;pointer-events:auto}
 .dm-scrim{position:absolute;inset:0;background:var(--scrim);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
