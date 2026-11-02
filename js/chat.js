@@ -440,10 +440,19 @@ function chatReset() {
   chatThinkTimers = [];
   if (messages) messages.innerHTML = "";
   if (previews) { previews.innerHTML = ""; previews.classList.remove("show"); }
-  if (input) { input.value = ""; input.placeholder = "Message..."; }
+  if (input) { input.value = ""; input.placeholder = "Message..."; input.style.height = ""; }
   chatPending = [];
   chatDidAdd = false;
   chatDidMove = false;
+}
+
+// The chat box is a textarea: a long message wraps onto new lines and the bar
+// grows with it, instead of the text scrolling out of sight behind the caret.
+function chatGrowInput() {
+  var input = document.getElementById("chatInput");
+  if (!input) return;
+  input.style.height = "auto";
+  input.style.height = input.scrollHeight + "px";
 }
 
 function openChatScreen() {
@@ -486,7 +495,7 @@ function sendChatMessage(text) {
   text = String(text != null ? text : (document.getElementById("chatInput") || {}).value || "").trim();
   if (!text) return;
   var input = document.getElementById("chatInput");
-  if (input) input.value = "";
+  if (input) { input.value = ""; input.style.height = ""; }
   chatAddMessage("user", text);
   var entries = [];
   try {
@@ -525,7 +534,7 @@ function listenChat() {
     for (var i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
     heard = t;
     var input = document.getElementById("chatInput");
-    if (input) input.value = t;
+    if (input) { input.value = t; chatGrowInput(); }
   };
   r.onerror = function (e) {
     if (e.error === "aborted") return;
@@ -536,7 +545,7 @@ function listenChat() {
     chatRec = null;
     chatSetListening(false);
     var input = document.getElementById("chatInput");
-    if (input) input.value = "";
+    if (input) { input.value = ""; input.style.height = ""; }
     if (failed) return;
     if (heard.trim()) sendChatMessage(heard.trim());
     else toast(VOICE_ERR["no-speech"]);
@@ -553,9 +562,11 @@ var chatCloseBtn = document.getElementById("chatClose");
 if (chatCloseBtn) chatCloseBtn.onclick = closeChatScreen;
 var chatInputEl = document.getElementById("chatInput");
 if (chatInputEl) {
+  chatInputEl.addEventListener("input", chatGrowInput);
   chatInputEl.onkeydown = function (e) {
     if (e.key === "Escape") { closeChatScreen(); return; }
-    if (e.key === "Enter" && this.value.trim()) { e.preventDefault(); sendChatMessage(); }
+    // Enter sends; Shift+Enter inserts a line break.
+    if (e.key === "Enter" && !e.shiftKey && this.value.trim()) { e.preventDefault(); sendChatMessage(); }
   };
 }
 document.addEventListener("keydown", function (e) {

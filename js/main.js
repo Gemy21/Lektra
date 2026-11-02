@@ -24,6 +24,7 @@ var composerScrim = document.getElementById("composerScrim");
 function openComposer() {
   document.getElementById("app").classList.add("composing");
   plansInput.placeholder = "Ask...";
+  growPlans();
   if (typeof syncThemeColor === "function") syncThemeColor();
 }
 
@@ -31,8 +32,17 @@ function closeComposer() {
   if (typeof cancelVoice === "function") cancelVoice();
   document.getElementById("app").classList.remove("composing");
   plansInput.placeholder = "What are your plans?";
+  plansInput.style.height = "";   // back to the one-line bar
   if (document.activeElement === plansInput) plansInput.blur();
   if (typeof syncThemeColor === "function") syncThemeColor();
+}
+
+// The plan box is a textarea, not a single-line input: when the text fills the
+// width it wraps and the box grows, instead of the caret sliding out of sight.
+function growPlans() {
+  if (!document.getElementById("app").classList.contains("composing")) return;
+  plansInput.style.height = "auto";
+  plansInput.style.height = plansInput.scrollHeight + "px";
 }
 
 function sendPlan() {
@@ -45,9 +55,11 @@ function sendPlan() {
 }
 
 plansInput.addEventListener("focus", openComposer);
+plansInput.addEventListener("input", growPlans);
 plansInput.onkeydown = function (e) {
   if (e.key === "Escape") { closeComposer(); return; }
-  if (e.key === "Enter" && this.value.trim()) { e.preventDefault(); sendPlan(); }
+  // Enter sends; Shift+Enter inserts a line break.
+  if (e.key === "Enter" && !e.shiftKey && this.value.trim()) { e.preventDefault(); sendPlan(); }
 };
 document.getElementById("composerClose").onclick = closeComposer;
 composerScrim.onclick = closeComposer;
