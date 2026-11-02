@@ -1,20 +1,12 @@
 <div align="center">
 
-<img src="assets/banner.png" alt="Lektra — plan your study week" width="100%">
-
-<br>
-
-**A calmer way to plan.**
-
-Lectures, labs, quizzes and deadlines — together in one quiet place.
-<br>
-Installs like an app. Opens without a browser. Works with the internet off.
+<img src="assets/hero.png" alt="Lektra — plan your study week" width="100%">
 
 <br>
 
 ### [Open Lektra →](https://ahmedkamalrezk.github.io/Lektra/)
 
-<sub>iPhone &nbsp;·&nbsp; Android &nbsp;·&nbsp; Desktop &nbsp;·&nbsp; v187</sub>
+<sub>iPhone &nbsp;·&nbsp; Android &nbsp;·&nbsp; Desktop &nbsp;·&nbsp; Installs like an app &nbsp;·&nbsp; v187</sub>
 
 </div>
 
@@ -161,7 +153,7 @@ Lektra/
 ├── js/                 db · state · appearance · month · modal · calendar
 │                       daymenu · subjects · search · voice · chat · reminders
 │                       scan · scan-worker · camera · main
-└── assets/             icons, banner, screenshots, bundled font
+└── assets/             icons, hero, screenshots, bundled font
 ```
 
 </details>
