@@ -260,7 +260,7 @@ body{display:flex;justify-content:center;align-items:center}
 #app.composing .composer-actions{display:flex;align-items:center;gap:2.2cqw;width:100%;height:auto;margin-top:1.8cqw}
 #app.composing .cbtn{display:flex;width:8cqw;height:8cqw;border-radius:50%;border:0;background:var(--f08);box-shadow:none;color:var(--t3)}
 #app.composing .cbtn svg{width:3.8cqw;height:3.8cqw}
-#app.composing .planToday{display:flex;flex:0 0 auto;min-width:0;align-items:center;justify-content:center;gap:1.4cqw;height:8cqw;padding:0 3.4cqw;border:0;border-radius:999px;background:var(--f08);color:var(--t3);font:inherit;font-size:3.6cqw;font-weight:700;cursor:pointer;margin:0;white-space:nowrap;box-shadow:none}
+#app.composing .planToday{display:flex;flex:0 0 auto;min-width:0;align-items:center;justify-content:center;gap:1.4cqw;height:8cqw;padding:0 3.4cqw;border:0;border-radius:999px;background:var(--accent-soft);color:var(--accent);font:inherit;font-size:3.6cqw;font-weight:800;cursor:pointer;margin:0;white-space:nowrap;box-shadow:none}
 #app.composing .planToday svg{width:4.4cqw;height:4.4cqw}
 #app.composing .cbtn.close{display:flex;margin-left:auto}
 .voice-listen{display:none}
