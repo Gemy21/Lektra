@@ -478,6 +478,20 @@ button.cam-thumb{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .pro:active{transform:scale(.98)}
 .box label{display:inline-block;background:var(--f09);color:var(--t3);font-size:2.6cqw;height:5cqw;line-height:5cqw;padding:0 2.2cqw;border-radius:2.5cqw;margin:4cqw 0 2cqw;letter-spacing:.02em;text-transform:uppercase}
 .box input{display:block;width:100%;height:12cqw;border-radius:6cqw;border:1px solid var(--line);background:var(--f06);box-shadow:inset 0 1px 0 var(--bevel),inset 0 -1px 0 var(--shade);color:var(--t1);font-size:16px;padding:0 4.2cqw;color-scheme:var(--scheme);outline:none;min-width:0;max-width:100%;-webkit-appearance:none;appearance:none;text-align:left}
+/* iOS Safari vertically centres a native date/time value only when the control
+   has a pixel line-height that matches its height (the same fix Bootstrap has
+   used for years). Its shadow-DOM segments also carry their own padding on
+   iOS, so clear that too or the value drifts toward the top of the pill. */
+.box input[type="date"],.box input[type="time"],.box input[type="datetime-local"],.box input[type="month"],.box input[type="week"]{line-height:12cqw}
+.box input::-webkit-datetime-edit,
+.box input::-webkit-datetime-edit-fields-wrapper,
+.box input::-webkit-datetime-edit-text,
+.box input::-webkit-datetime-edit-minute-field,
+.box input::-webkit-datetime-edit-hour-field,
+.box input::-webkit-datetime-edit-meridiem-field,
+.box input::-webkit-datetime-edit-day-field,
+.box input::-webkit-datetime-edit-month-field,
+.box input::-webkit-datetime-edit-year-field{padding:0}
 .box input::-webkit-date-and-time-value{text-align:left}
 .box input:focus{border-color:var(--line-3)}
 .box .chips{margin-top:0}
