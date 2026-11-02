@@ -34,11 +34,11 @@ margins, and everything that matters a tap away.
 
 <div align="center">
 
-<img src="assets/screen-month.png" alt="The month view" width="31%">
+<img src="assets/screens/month.png" alt="The month view" width="31%">
 &nbsp;&nbsp;
-<img src="assets/screen-day.png" alt="A day at a glance" width="31%">
+<img src="assets/screens/day.png" alt="A day at a glance" width="31%">
 &nbsp;&nbsp;
-<img src="assets/screen-themes.png" alt="Appearance and themes" width="31%">
+<img src="assets/screens/themes.png" alt="Appearance and themes" width="31%">
 
 <sub><b>Month</b> &nbsp;·&nbsp; <b>Day</b> &nbsp;·&nbsp; <b>Appearance</b></sub>
 
@@ -161,7 +161,7 @@ Lektra/
 ├── js/                 db · state · appearance · month · modal · calendar
 │                       daymenu · subjects · search · voice · chat · reminders
 │                       scan · scan-worker · camera · main
-└── assets/             icons, banner, bundled font
+└── assets/             icons, banner, screenshots, bundled font
 ```
 
 </details>
