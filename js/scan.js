@@ -613,6 +613,43 @@ function scanFail(message) {
   document.getElementById("scanRetry").onclick = scanTimetable;
 }
 
+// ===== don't lose a scan by accident =====
+// The detected classes live only inside the review sheet until Save, so every
+// way out of it (Close button, backdrop tap, drag down) asks first. The warning
+// is a layer on top: the sheet and everything typed into it stay untouched.
+function removeScanWarn() {
+  var w = document.querySelector(".scan-warn");
+  if (w) w.remove();
+}
+
+function askBeforeDiscardScan() {
+  if (document.querySelector(".scan-warn")) return false;   // already asking
+  var modal = document.getElementById("modal");
+  if (!modal) return true;
+
+  var wrap = document.createElement("div");
+  wrap.className = "scan-warn";
+  wrap.innerHTML =
+    '<div class="scan-warn-card" role="alertdialog" aria-modal="true" aria-labelledby="scanWarnTitle">' +
+      '<b id="scanWarnTitle">Discard these classes?</b>' +
+      '<p>They have not been saved yet. If you close now the scan is gone and you will have to read the photo again.</p>' +
+      '<div class="scan-warn-btns">' +
+        '<button type="button" id="scanWarnStay">Keep editing</button>' +
+        '<button type="button" class="danger" id="scanWarnGo">Discard</button>' +
+      '</div>' +
+    '</div>';
+  modal.appendChild(wrap);
+
+  wrap.onclick = function (e) { if (e.target === wrap) removeScanWarn(); };
+  document.getElementById("scanWarnStay").onclick = removeScanWarn;
+  document.getElementById("scanWarnGo").onclick = function () {
+    removeScanWarn();
+    modalCloseGuard = null;        // they chose to leave: don't ask twice
+    closeModal();
+  };
+  return false;                    // keep the review sheet open for now
+}
+
 // ===== review before anything is saved =====
 function scanReview(entries) {
   var html = '<h2>Check what I found</h2><div class="muted">' + entries.length + " class" +
@@ -646,6 +683,9 @@ function scanReview(entries) {
   document.getElementById("scanSave").onclick = saveScan;
   document.getElementById("scanAgain").onclick = scanTimetable;
 
+  // Nothing is saved yet: every way out of this sheet asks first.
+  modalCloseGuard = askBeforeDiscardScan;
+
   // Type / Day act as radio groups; unchecking dims the card so it reads as skipped
   Array.prototype.forEach.call(document.querySelectorAll(".srow"), function (row) {
     row.querySelector(".pick").onclick = function () { row.classList.toggle("off", !this.checked); };
@@ -662,6 +702,8 @@ function scanReview(entries) {
 }
 
 function saveScan() {
+  // Saving is the finish line, not a discard: don't ask on the way out.
+  modalCloseGuard = null;
   var added = 0, newSubjects = 0;
 
   Array.prototype.forEach.call(document.querySelectorAll(".srow"), function (row) {

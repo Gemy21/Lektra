@@ -1,4 +1,8 @@
 // ===== Buttons + start =====
+// Bumped together with CACHE in sw.js, so an outdated install is easy to spot:
+// Settings -> More shows this number at the bottom.
+var APP_BUILD = "v183";
+
 function render() {
   // Any render satisfies a deferred one.
   pendingRender = false;
@@ -162,7 +166,8 @@ var SET_PAGES = {
       '</div>' +
       '<label>Storage</label>' +
       '<div class="btns" style="margin-top:0"><button id="clearBtn" class="danger">Clear all data</button></div>' +
-      '<div class="muted" style="margin-top:3cqw">Deleting removes every subject, lecture, entry and saved file. This cannot be undone.</div>';
+      '<div class="muted" style="margin-top:3cqw">Deleting removes every subject, lecture, entry and saved file. This cannot be undone.</div>' +
+      '<div class="build">Lektra ' + APP_BUILD + '</div>';
   }
 };
 
@@ -389,6 +394,22 @@ document.getElementById("bSet").onclick = openSettings;
 
 // ===== Service worker (install + offline) =====
 if ("serviceWorker" in navigator) {
+  // A new build installs in the background and takes over the moment it is
+  // ready. Reload once so the open page isn't left running the previous
+  // version — that is what made a fix look like it "didn't work" after an
+  // update. Skip the very first install (there is nothing stale to replace).
+  var swHadController = !!navigator.serviceWorker.controller;
+  var swReloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", function () {
+    if (!swHadController || swReloading) return;
+    // Never yank the page out from under an open sheet or a half-typed plan:
+    // tell them instead, and the next launch picks the new build up.
+    var busy = document.getElementById("app").classList.contains("composing") ||
+      document.getElementById("modal").className.indexOf("show") >= 0;
+    if (busy) { toast("Updated — reopen Lektra to finish"); return; }
+    swReloading = true;
+    window.location.reload();
+  });
   window.addEventListener("load", function () {
     navigator.serviceWorker.register("sw.js").catch(function () {});
   });

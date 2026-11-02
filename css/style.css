@@ -395,6 +395,21 @@ body{display:flex;justify-content:center;align-items:center}
 .scan-cancel{width:100%;height:10.6cqw;margin-top:4.2cqw;border:1px solid var(--line);border-radius:5.4cqw;background:var(--f06);color:var(--t3);font:inherit;font-size:3.4cqw;font-weight:700;cursor:pointer;box-shadow:inset 0 1px 0 var(--bevel)}
 .scan-cancel:active{transform:scale(.99)}
 @media (prefers-reduced-motion:reduce){.scan-ring{animation:none;border-color:var(--accent);opacity:.75}.scan-fill::after{animation:none;opacity:0}}
+/* ===== "discard the scan?" warning ===== */
+/* The reviewed classes exist only inside the sheet until Save, so every close
+   route asks first. This sits above the sheet and never rebuilds it. */
+.scan-warn{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:6cqw;background:rgba(0,0,0,.5);animation:fadeIn .16s ease-out}
+:root[data-theme="light"] .scan-warn{background:rgba(0,0,0,.3)}
+.scan-warn-card{width:100%;max-width:79cqw;padding:5.4cqw 4.8cqw 4.2cqw;border:1px solid var(--line);border-radius:6.4cqw;background:var(--sheet2);box-shadow:0 3cqw 10cqw var(--shadow),inset 0 1px 0 var(--f07);text-align:center;animation:warnIn .2s cubic-bezier(.2,.9,.25,1)}
+@keyframes warnIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:none}}
+.scan-warn-card b{display:block;font-size:4.6cqw;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+.scan-warn-card p{margin:1.6cqw 0 0;font-size:3.1cqw;line-height:1.45;color:var(--t5)}
+.scan-warn-btns{display:flex;gap:2.4cqw;margin-top:4.4cqw}
+.scan-warn-btns button{flex:1;height:10.6cqw;border-radius:5.4cqw;border:1px solid var(--line);background:var(--f06);color:var(--t3);font:inherit;font-size:3.3cqw;font-weight:700;cursor:pointer}
+.scan-warn-btns button:active{transform:scale(.985)}
+.scan-warn-btns .danger{background:#ff453a;border-color:#ff453a;color:#fff}
+.build{margin-top:4cqw;text-align:center;font-size:2.8cqw;font-weight:700;color:var(--t6);letter-spacing:.02em}
+@media (prefers-reduced-motion:reduce){.scan-warn,.scan-warn-card{animation:none}}
 /* ===== full-screen camera ===== */
 /* The camera is a tall rounded card that starts around the middle of the
    screen: black above, recent shots peeking over its top edge, and the

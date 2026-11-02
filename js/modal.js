@@ -1,4 +1,8 @@
 // ===== Modal (onOk = null shows only a Close button) =====
+// A sheet can set this to intercept every way of closing it (footer button,
+// backdrop tap, drag down). Return false to keep the sheet open.
+var modalCloseGuard = null;
+
 function resetDrag(box) {
   box.style.transform = "";
   box.style.transition = "";
@@ -37,6 +41,7 @@ function dragToClose(box) {
 
 function openModal(html, onOk) {
   var box = document.getElementById("box");
+  modalCloseGuard = null;          // a new sheet never inherits a guard
   box.className = "box";
   box.removeAttribute("data-page");
   resetDrag(box);
@@ -51,6 +56,7 @@ function openModal(html, onOk) {
 // Full-height sheet without the default footer (caller draws its own buttons)
 function openSheet(html) {
   var box = document.getElementById("box");
+  modalCloseGuard = null;          // a new sheet never inherits a guard
   box.className = "box sheet";
   box.removeAttribute("data-page");
   resetDrag(box);
@@ -61,6 +67,9 @@ function openSheet(html) {
   dragToClose(box);
 }
 function closeModal() {
+  // The sheet may want to check before it is thrown away (unsaved scan results).
+  if (modalCloseGuard && modalCloseGuard() === false) return;
+  modalCloseGuard = null;
   // A pending AI scan must not reopen the sheet after the user closed it.
   if (typeof cancelScan === "function") cancelScan();
   var m = document.getElementById("modal");
