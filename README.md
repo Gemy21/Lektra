@@ -6,7 +6,7 @@
 
 ### [Open Lektra →](https://ahmedkamalrezk.github.io/Lektra/)
 
-<sub>iPhone &nbsp;·&nbsp; Android &nbsp;·&nbsp; Desktop &nbsp;·&nbsp; Installs like an app &nbsp;·&nbsp; v187</sub>
+<sub>iPhone &nbsp;·&nbsp; Android &nbsp;·&nbsp; Desktop &nbsp;·&nbsp; Installs like an app &nbsp;·&nbsp; v188</sub>
 
 </div>
 
@@ -83,6 +83,9 @@ The files you see are the files that run.
 - **iPhone** — open the link in Safari, tap **Share**, then **Add to Home Screen**.
 - **Android** — open the link in Chrome, tap the menu, then **Install app**.
 - **Desktop** — open the link. On a wide window it appears inside a phone frame.
+
+Lektra offers to install itself the first time you open it, with a one-tap prompt
+where the browser supports it and short steps where it does not.
 
 Installing needs HTTPS — a browser rule, not a Lektra one.
 
@@ -248,7 +251,7 @@ instead — the parsing is identical.
 
 <div align="center">
 
-<sub><b>Lektra</b> &nbsp;·&nbsp; v187 &nbsp;·&nbsp; built to be kept, not bookmarked</sub>
+<sub><b>Lektra</b> &nbsp;·&nbsp; v188 &nbsp;·&nbsp; built to be kept, not bookmarked</sub>
 
 <br>
 

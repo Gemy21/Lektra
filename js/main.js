@@ -1,7 +1,7 @@
 // ===== Buttons + start =====
 // Bumped together with CACHE in sw.js, so an outdated install is easy to spot:
 // Settings -> More shows this number at the bottom.
-var APP_BUILD = "v187";
+var APP_BUILD = "v188";
 
 function render() {
   // Any render satisfies a deferred one.
@@ -84,6 +84,7 @@ var SET_ICON = {
   paint: '<svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18 3 3 0 0 0 0-6 3 3 0 0 1 0-6 3 3 0 0 0 0-6z" fill="currentColor" stroke="none"/></svg>',
   month: '<svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.4" width="18" height="16.6" rx="4"/><path d="M7.8 2.6v3.4M16.2 2.6v3.4M3 9.4h18"/><path d="M7.5 13h2M11 13h2M14.5 13h2M7.5 17h2M11 17h2"/></svg>',
   more: '<svg class="mi" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
+  install: '<svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2.5" width="14" height="19" rx="4"/><path d="M12 7.2v7.2"/><path d="M9.2 11.6L12 14.4l2.8-2.8"/></svg>',
   person: '<svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="9.1" r="2.6"/><path d="M6.7 18.1a6.3 6.3 0 0 1 10.6 0"/></svg>'
 };
 
@@ -120,6 +121,9 @@ var SET_PAGES = {
   main: function () {
     return setHead("Settings") +
       '<div class="menu">' +
+      (typeof installAvailable === "function" && installAvailable()
+        ? '<button class="mrow install-row" data-install="1">' + SET_ICON.install + "<span>Install app</span>" + SET_ICON.chev + "</button>"
+        : "") +
       setRow("appearance", SET_ICON.paint, "Appearance") +
       setRow("month", SET_ICON.month, "Month Options") +
       setRow("lang", SET_ICON.globe, "Voice language") +
@@ -274,6 +278,9 @@ function settingsPage(page) {
 
   var scan = box.querySelector("[data-scan]");
   if (scan) scan.onclick = function () { closeModal(); scanTimetable(); };
+
+  var inst = box.querySelector("[data-install]");
+  if (inst) inst.onclick = function () { closeModal(); openInstallFlow(); };
 
   var dev = box.querySelector("[data-dev]");
   if (dev) dev.onclick = openDeveloperSheet;

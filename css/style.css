@@ -507,6 +507,25 @@ button.cam-thumb{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .btns{display:flex;gap:2cqw;margin-top:6cqw}
 .btns button{flex:1;height:12cqw;border-radius:6cqw;border:1px solid var(--line);font-size:3.6cqw;cursor:pointer;background:var(--f06);box-shadow:inset 0 1px 0 var(--bevel),inset 0 -1px 0 var(--shade);color:var(--t3)}
 .btns .ok{background:var(--on);color:var(--on-fg);font-weight:700;border-color:var(--on)}
+/* ===== Install suggestion ===== */
+.install-card{position:absolute;left:5cqw;right:5cqw;bottom:calc(19.2cqw + var(--safe-bottom));z-index:3;display:none;align-items:center;gap:2.8cqw;padding:2.4cqw 2.6cqw 2.4cqw 2.8cqw;border:1px solid var(--line);border-radius:5.4cqw;background:var(--sheet);backdrop-filter:blur(30px) saturate(1.3);-webkit-backdrop-filter:blur(30px) saturate(1.3);box-shadow:0 2.4cqw 6.4cqw var(--shadow),inset 0 1px 0 var(--bevel);color:var(--t1);animation:installIn .34s cubic-bezier(.2,.9,.25,1)}
+.install-card.show{display:flex}
+#app.composing .install-card,#app.chatting .install-card{display:none}
+.install-icon{width:9.8cqw;height:9.8cqw;border-radius:2.6cqw;flex:none;box-shadow:0 0 0 1px var(--line),0 1cqw 2.4cqw var(--shadow)}
+.install-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:.45cqw}
+.install-copy strong{font-size:3.5cqw;font-weight:800;letter-spacing:-.02em;line-height:1.12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.install-copy span{font-size:2.9cqw;font-weight:600;color:var(--t5);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.install-yes{flex:none;height:8.2cqw;padding:0 3.2cqw;border:0;border-radius:999px;background:var(--on);color:var(--on-fg);font:inherit;font-size:3.1cqw;font-weight:800;letter-spacing:-.01em;cursor:pointer}
+.install-yes:active{transform:scale(.97)}
+.install-x{width:6.4cqw;height:6.4cqw;flex:none;display:flex;align-items:center;justify-content:center;padding:0;margin-left:-.8cqw;border:0;background:none;color:var(--t6);cursor:pointer}
+.install-x svg{width:3.2cqw;height:3.2cqw}
+.mrow.install-row .mi{color:var(--accent-text,var(--accent))}
+.install-steps{display:flex;flex-direction:column;gap:2.6cqw;margin-top:4.6cqw}
+.install-step{display:flex;gap:3cqw;align-items:flex-start}
+.install-step-n{width:6.4cqw;height:6.4cqw;flex:none;border-radius:50%;background:var(--f08);color:var(--accent-text,var(--accent));font-size:3.1cqw;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1}
+.install-step strong{display:block;font-size:3.75cqw;font-weight:800;letter-spacing:-.015em;line-height:1.2}
+.install-step > div > span{display:block;margin-top:.45cqw;font-size:3.1cqw;font-weight:600;color:var(--t5);line-height:1.35}
+@keyframes installIn{from{opacity:0;transform:translateY(2.4cqw)}to{opacity:1;transform:none}}
 #toast{position:absolute;bottom:calc(20cqw + var(--safe-bottom));left:50%;transform:translateX(-50%);background:var(--on);color:var(--on-fg);padding:2.4cqw 4cqw;border-radius:5cqw;font-size:3.4cqw;opacity:0;transition:.3s;pointer-events:none;z-index:9;width:max-content;max-width:88%;text-align:center;line-height:1.35}
 #toast.show{opacity:1}
 /* ===== day entry long-press menu ===== */
