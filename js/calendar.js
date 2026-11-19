@@ -254,7 +254,6 @@ function renderCalendar() {
   document.getElementById("next").onclick = function () { view = new Date(y, m + 1, 1); render(); };
   var todayBtn = document.getElementById("todayBtn");
   if (todayBtn) todayBtn.onclick = function () { view = new Date(today.getFullYear(), today.getMonth(), 1); render(); };
-  document.getElementById("titleMonth").onclick = function () { yearOpen = true; render(); };
   var startX = 0;
   bindMainSwipe(function (e) { if (e.touches.length) startX = e.touches[0].clientX; }, function (e) {
     if (!e.changedTouches.length) return;
@@ -276,7 +275,7 @@ function renderCalendar() {
   });
 }
 
-// ===== Year screen (tap the month name) =====
+// ===== Year screen (pulled down from the notch) =====
 var yearOpen = false;
 
 function monthCard(y, m) {
@@ -324,8 +323,8 @@ function renderYear() {
 }
 
 // ===== The notch opens the months screen =====
-// Pull the bar at the top of the screen down to review the months (the same
-// year screen the month name opens). The stylesheet gives the bar a wider
+// Pull the bar at the top of the screen down to review the months: the notch is
+// the only way into the year screen. The stylesheet gives the bar a wider
 // invisible grab area; the bar follows the finger for the length of the pull,
 // then springs back, and past the threshold the release opens the screen.
 function openMonthsFromNotch() {
