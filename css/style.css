@@ -610,6 +610,22 @@ button.cam-thumb{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .dseldel{border:0;background:none;color:#ff453a;font:inherit;font-size:3.6cqw;font-weight:800;cursor:pointer;padding:0 2cqw}
 .dseldone{height:8.4cqw;padding:0 4.6cqw;border:0;border-radius:999px;background:var(--on);color:var(--on-fg);font:inherit;font-size:3.4cqw;font-weight:800;cursor:pointer}
 .row.file{cursor:pointer}
+/* file rows: a small preview tile read from the copy in IndexedDB */
+.fthumb{position:relative;flex:none;width:10cqw;height:10cqw;border-radius:2.6cqw;overflow:hidden;background:var(--f08);box-shadow:inset 0 1px 0 var(--bevel),inset 0 -1px 0 var(--shade);display:flex;align-items:center;justify-content:center}
+.fthumb .ftag{font-size:2.2cqw;font-weight:800;letter-spacing:.04em;color:var(--t5);line-height:1}
+.fthumb.has .ftag{display:none}
+.fthumb img{width:100%;height:100%;object-fit:cover;display:block}
+/* the preview sheet behind a file row */
+.pvtitle{margin:4.6cqw 0 2.6cqw;font-size:4.6cqw;line-height:1.25;word-break:break-word}
+.pvbox{display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:4cqw;border:1px solid var(--line-soft);background:var(--f05);min-height:22cqw}
+.pvimg{display:block;width:100%;max-height:52cqw;object-fit:contain}
+.pvframe{display:block;width:100%;height:58cqw;border:0;background:#fff}
+.pvtext{margin:0;padding:3.4cqw;width:100%;max-height:52cqw;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:2.9cqw;line-height:1.55;color:var(--t2);text-align:left}
+.pvmeta{color:var(--t5);font-size:2.9cqw;margin:2.8cqw 0 1.4cqw}
+.pvnone{display:flex;flex-direction:column;align-items:center;gap:2.4cqw;padding:7cqw 4cqw;color:var(--t5);font-size:3cqw;line-height:1.5;text-align:center}
+.pvnone .fthumb{width:13cqw;height:13cqw;border-radius:3.4cqw}
+.pvnone .fthumb .ftag{font-size:3cqw}
+#pvOpen{margin-top:2cqw}
 .todayBtn{position:absolute;left:5cqw;bottom:calc(27cqw + var(--safe-bottom));height:9.4cqw;display:flex;align-items:center;gap:2.1cqw;padding:0 4.2cqw;border:0;border-radius:5cqw;background:var(--f10);box-shadow:inset 0 1px 0 var(--bevel-2),inset 0 -1px 0 var(--f14);color:var(--t1);font-size:3.6cqw;font-weight:600;cursor:pointer;z-index:3;animation:todayIn .28s cubic-bezier(.23,1,.32,1)}
 .todayBtn svg{width:3.8cqw;height:3.8cqw;flex:none}
 .todayBtn:active{transform:scale(.97)}
