@@ -254,7 +254,6 @@ function renderCalendar() {
   document.getElementById("next").onclick = function () { view = new Date(y, m + 1, 1); render(); };
   var todayBtn = document.getElementById("todayBtn");
   if (todayBtn) todayBtn.onclick = function () { view = new Date(today.getFullYear(), today.getMonth(), 1); render(); };
-  document.getElementById("titleMonth").onclick = function () { yearOpen = true; render(); };
   var startX = 0;
   bindMainSwipe(function (e) { if (e.touches.length) startX = e.touches[0].clientX; }, function (e) {
     if (!e.changedTouches.length) return;
@@ -276,7 +275,7 @@ function renderCalendar() {
   });
 }
 
-// ===== Year screen (tap the month name) =====
+// ===== Year screen (pulled down from the notch) =====
 var yearOpen = false;
 
 function monthCard(y, m) {
@@ -322,6 +321,76 @@ function renderYear() {
     }
   });
 }
+
+// ===== The notch opens the months screen =====
+// Pull the bar at the top of the screen down to review the months: the notch is
+// the only way into the year screen. The stylesheet gives the bar a wider
+// invisible grab area; the bar follows the finger for the length of the pull,
+// then springs back, and past the threshold the release opens the screen.
+function openMonthsFromNotch() {
+  if (tab === "cal" && yearOpen && !dayOpen) return;   // already there
+  tab = "cal";
+  dayOpen = null;
+  yearOpen = true;
+  render();
+}
+
+function notchPullable() {
+  var app = document.getElementById("app");
+  if (app.classList.contains("composing") || app.classList.contains("chatting")) return false;
+  var modal = document.getElementById("modal");
+  return !(modal && modal.classList.contains("show"));
+}
+
+(function bindNotchPull() {
+  var h = document.getElementById("topHandle");
+  if (!h) return;
+  var startX = 0, startY = 0, travel = 0, pid = null;
+  var THRESHOLD = 42;    // px of downward travel that commits the gesture
+  var MAX_FOLLOW = 26;   // px the bar itself moves before the screen opens
+
+  h.addEventListener("pointerdown", function (e) {
+    if (pid !== null) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (!notchPullable()) return;
+    pid = e.pointerId;
+    startX = e.clientX;
+    startY = e.clientY;
+    travel = 0;
+    h.classList.add("pulling");
+    try { h.setPointerCapture(pid); } catch (err) {}
+  });
+
+  // Move and release are watched on the window, not on the bar: the finger
+  // soon leaves the small grip area, and pointer capture is not available in
+  // every browser.
+  window.addEventListener("pointermove", function (e) {
+    if (pid === null || e.pointerId !== pid) return;
+    var dy = e.clientY - startY;
+    var dx = e.clientX - startX;
+    // Sideways or upward movement is not this gesture: let the pull fall back.
+    if (dy <= 0 || Math.abs(dx) > Math.abs(dy)) {
+      travel = 0;
+      h.style.removeProperty("--pull");
+      return;
+    }
+    travel = dy;
+    h.style.setProperty("--pull", Math.min(dy * 0.55, MAX_FOLLOW) + "px");
+  });
+
+  function finish(e) {
+    if (pid === null || e.pointerId !== pid) return;
+    pid = null;
+    var open = travel >= THRESHOLD;
+    travel = 0;
+    h.classList.remove("pulling");
+    h.style.removeProperty("--pull");
+    if (open) openMonthsFromNotch();
+  }
+
+  window.addEventListener("pointerup", finish);
+  window.addEventListener("pointercancel", finish);
+})();
 
 // ===== Day screen (full page, opened from a calendar cell) =====
 var dayOpen = null;

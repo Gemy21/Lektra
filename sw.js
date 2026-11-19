@@ -1,11 +1,11 @@
 // ===== Lektra service worker: makes the app installable + fully offline =====
 //
 // Every build gets its own cache name AND its own versioned code URLs
-// (?v=vNNN). That makes an update atomic: the new HTML, CSS and JS are fetched
-// together into one cache, and the GitHub Pages CDN can never slip an old file
-// into a new build. `tools/bump-version.py` keeps BUILD, APP_BUILD, index.html
-// and version.json in sync, so this is one command, not a checklist.
-var BUILD = "v209";                 // keep in sync with APP_BUILD (js/main.js)
+// (?v=<version>). That makes an update atomic: the new HTML, CSS and JS are
+// fetched together into one cache, and the GitHub Pages CDN can never slip an
+// old file into a new build. `tools/bump-version.py` keeps BUILD, APP_BUILD,
+// index.html and version.json in sync, so this is one command, not a checklist.
+var BUILD = "2.2";                 // keep in sync with APP_BUILD (js/main.js)
 var CACHE = "lektra-" + BUILD;
 var V = "?v=" + BUILD;
 

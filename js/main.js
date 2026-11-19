@@ -1,8 +1,8 @@
 // ===== Buttons + start =====
-// The build id for this whole release. `python3 tools/bump-version.py` keeps it
+// The version for this whole release. `python3 tools/bump-version.py` keeps it
 // in sync with sw.js, version.json and the ?v= URLs. Settings -> More shows it,
 // so comparing two phones is the fastest way to spot a stale install.
-var APP_BUILD = "v209";
+var APP_BUILD = "2.2";
 
 function render() {
   // Any render satisfies a deferred one.

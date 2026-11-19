@@ -123,6 +123,8 @@ function closeModal() {
   modalCloseGuard = null;
   // A pending AI scan must not reopen the sheet after the user closed it.
   if (typeof cancelScan === "function") cancelScan();
+  // Free the blob URL backing an open file preview.
+  if (typeof revokeFilePreview === "function") revokeFilePreview();
   // The rotating example in the New subject sheet stops with the sheet.
   if (typeof stopSubjectExamples === "function") stopSubjectExamples();
   var m = document.getElementById("modal");

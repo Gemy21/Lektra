@@ -67,7 +67,10 @@ function idbAll(store) { return tx(store, "readonly", function (s) { return s.ge
 // ===== Files =====
 
 // Save a picked File into the local database. Returns the stored record.
-function putFile(subjectId, file) {
+// The File is structured-cloned into IndexedDB, so these are the app's own
+// bytes: the user can delete the original from their Files app and it still
+// opens from the subject folder.
+function putFile(subjectId, file, thumb) {
   var rec = {
     id: uid(),
     subjectId: subjectId,
@@ -75,9 +78,20 @@ function putFile(subjectId, file) {
     type: file.type || "",
     size: file.size || 0,
     added: Date.now(),
+    thumb: thumb || null,
     blob: file
   };
   return idbPut("files", rec).then(function () { return rec; });
+}
+
+// Attach a generated thumbnail to an existing record (used the first time an
+// older saved image is listed, so files stored before thumbnails still get one).
+function setFileThumb(id, thumb) {
+  return getFile(id).then(function (rec) {
+    if (!rec || !thumb) return null;
+    rec.thumb = thumb;
+    return idbPut("files", rec).then(function () { return rec; });
+  });
 }
 
 function getFile(id) { return idbGet("files", id); }

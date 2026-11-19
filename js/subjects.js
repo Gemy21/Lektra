@@ -101,6 +101,7 @@ function renderSubjects() {
   var main = document.getElementById("main");
   if (typeof clearDaySwipe === "function") clearDaySwipe();
   main.ontouchstart = null; main.ontouchend = null;
+  clearFolderThumbs();
   var cur = state.subjects.filter(function (s) { return s.id === openId; })[0];
   if (cur) { renderFolder(main, cur); return; }
   var html = '<div class="title"><h1>Subjects</h1></div>';
@@ -135,17 +136,194 @@ function renderSubjects() {
   document.getElementById("scanSub").onclick = scanTimetable;
 }
 
+// ===== File previews =====
+// A picked file is copied into IndexedDB by putFile (the File is structured
+// cloned, not referenced), so the subject folder keeps working after the
+// original is deleted from the device. These helpers add a small thumbnail in
+// the row and a preview sheet, both read from that local copy.
+
+var folderThumbUrls = [];
+
+function clearFolderThumbs() {
+  folderThumbUrls.forEach(function (u) {
+    try { URL.revokeObjectURL(u); } catch (e) {}
+  });
+  folderThumbUrls = [];
+}
+
+function isImageFile(name, type) {
+  return /^image\//.test(type || "") || /\.(png|jpe?g|gif|webp|avif|svg|bmp|heic|heif)$/i.test(name || "");
+}
+
+// A short badge that fits the 10cqw tile: PDF, DOC, PPT, IMG, FILE...
+function fileTag(name, type) {
+  if (/^image\//.test(type || "")) return "IMG";
+  if (type === "application/pdf") return "PDF";
+  var n = String(name || "");
+  var dot = n.lastIndexOf(".");
+  var ext = dot > 0 ? n.slice(dot + 1) : "";
+  if (/^(png|jpe?g|gif|webp|avif|svg|bmp|heic|heif)$/i.test(ext)) return "IMG";
+  if (/^pdf$/i.test(ext)) return "PDF";
+  ext = ext.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return (ext || "FILE").slice(0, 4);
+}
+
+// Decode an image off the main render path and keep only a small copy, so a
+// folder of 20 photos does not hold 20 full-size images in memory when listed.
+function makeFileThumb(blob, name, type) {
+  return new Promise(function (resolve) {
+    if (!blob || !window.Image || !document.createElement || !isImageFile(name || blob.name, type || blob.type)) {
+      resolve(null);
+      return;
+    }
+    var url;
+    try { url = URL.createObjectURL(blob); } catch (e) { resolve(null); return; }
+    var img = new Image();
+    var done = false;
+    function finish(thumb) {
+      if (done) return;
+      done = true;
+      try { URL.revokeObjectURL(url); } catch (e) {}
+      resolve(thumb || null);
+    }
+    img.onload = function () {
+      try {
+        var w = img.naturalWidth || img.width;
+        var h = img.naturalHeight || img.height;
+        if (!w || !h) { finish(null); return; }
+        var scale = Math.min(1, 320 / Math.max(w, h));
+        var c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(w * scale));
+        c.height = Math.max(1, Math.round(h * scale));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        // WebP keeps transparency; JPEG is the fallback for browsers without it.
+        if (c.toBlob) {
+          c.toBlob(function (b) {
+            if (b) { finish(b); return; }
+            c.toBlob(function (b2) { finish(b2); }, "image/jpeg", 0.82);
+          }, "image/webp", 0.85);
+        } else {
+          finish(null);
+        }
+      } catch (e) { finish(null); }
+    };
+    img.onerror = function () { finish(null); };
+    img.src = url;
+  });
+}
+
+function paintFolderThumb(slot, blob) {
+  if (!slot || !blob) return;
+  var url = URL.createObjectURL(blob);
+  folderThumbUrls.push(url);
+  var img = new Image();
+  img.className = "fthumbimg";
+  img.alt = "";
+  img.onload = function () { slot.classList.add("has"); };
+  img.src = url;
+  slot.appendChild(img);
+}
+
+// Fill the tiles after the rows are on screen: one read of the store, then a
+// thumbnail per image. Records saved before thumbnails existed get one now.
+function loadFolderThumbs(main, s) {
+  if (!s.files.length) return;
+  idbAll("files").then(function (all) {
+    var byId = {};
+    (all || []).forEach(function (r) { if (r && r.id) byId[r.id] = r; });
+    s.files.forEach(function (f) {
+      var rec = byId[f.id];
+      if (!rec) return;
+      var slot = main.querySelector('[data-thumb="' + f.id + '"]');
+      if (!slot) return;
+      if (rec.thumb) { paintFolderThumb(slot, rec.thumb); return; }
+      if (!isImageFile(rec.name, rec.type)) return;
+      makeFileThumb(rec.blob, rec.name, rec.type).then(function (thumb) {
+        if (!thumb) return;
+        if (typeof setFileThumb === "function") setFileThumb(rec.id, thumb).catch(function () {});
+        var live = main.querySelector('[data-thumb="' + rec.id + '"]');
+        if (live) paintFolderThumb(live, thumb);
+      });
+    });
+  }).catch(function () {});
+}
+
+var filePreviewUrl = "";
+
+function revokeFilePreview() {
+  if (!filePreviewUrl) return;
+  try { URL.revokeObjectURL(filePreviewUrl); } catch (e) {}
+  filePreviewUrl = "";
+}
+
+// Tap a row: preview the copy that lives in Lektra. Older builds downloaded the
+// file straight away; now the common case (a photo or a PDF) is visible without
+// leaving the app, and "Open file" is still there for everything else.
+function openFilePreview(id) {
+  getFile(id).then(function (rec) {
+    if (!rec || !rec.blob) { toast("File not found"); return; }
+    revokeFilePreview();
+    var url = URL.createObjectURL(rec.blob);
+    filePreviewUrl = url;
+    var name = rec.name || "File";
+    var type = rec.type || "";
+    var isPdf = type === "application/pdf" || /\.pdf$/i.test(name);
+    var isText = /^text\//.test(type) || /\.(txt|md|csv|json|log)$/i.test(name);
+    var view;
+
+    function noPreview() {
+      return '<div class="pvnone"><span class="fthumb pvtag"><span class="ftag">' + fileTag(name, type) +
+        '</span></span><span>No preview for this file type.<br>Open it to view the document.</span></div>';
+    }
+
+    function show() {
+      openModal(
+        '<h2 class="pvtitle">' + esc(name) + "</h2>" +
+        '<div class="pvbox' + (isPdf ? " pdf" : "") + '">' + view + "</div>" +
+        '<div class="pvmeta">' + (rec.size ? fmtSize(rec.size) + " · " : "") + "Saved in Lektra ✓</div>" +
+        '<button class="add" id="pvOpen" type="button">Open file</button>'
+      );
+      var openBtn = document.getElementById("pvOpen");
+      if (openBtn) openBtn.onclick = function () { openStoredFile(rec.id); };
+    }
+
+    if (isImageFile(name, type)) {
+      view = '<img class="pvimg" src="' + url + '" alt="">';
+      show();
+      return;
+    }
+    if (isPdf) {
+      view = '<iframe class="pvframe" src="' + url + '#toolbar=0&navpanes=0&view=FitH" title="' +
+        esc(name) + '"></iframe>';
+      show();
+      return;
+    }
+    if (isText && rec.blob.text) {
+      rec.blob.text().then(function (t) {
+        view = '<pre class="pvtext">' + esc(String(t || "").slice(0, 20000)) + "</pre>";
+        show();
+      }).catch(function () { view = noPreview(); show(); });
+      return;
+    }
+    view = noPreview();
+    show();
+  }).catch(function () { toast("Could not open that file"); });
+}
+
 function renderFolder(main, s) {
   var total = 0;
   s.files.forEach(function (f) { total += f.size || 0; });
   var html = '<button class="back" id="back">‹ All subjects</button><div class="title" style="margin-top:0"><h1 style="font-size:30px">' + esc(s.name) + "</h1></div>";
   if (!s.files.length) html += '<div class="empty">No files yet</div>';
   s.files.forEach(function (f, i) {
-    html += '<div class="row file" data-open="' + i + '"><span style="font-size:20px">📄</span><div class="i">' + esc(f.name) +
-      "<div>On this device ✓" + (f.size ? " · " + fmtSize(f.size) : "") + '</div></div><button class="x" data-i="' + i + '" aria-label="Delete file">✕</button></div>';
+    html += '<div class="row file" data-open="' + i + '">' +
+      '<span class="fthumb" data-thumb="' + esc(f.id) + '"><span class="ftag">' + fileTag(f.name, f.type) + "</span></span>" +
+      '<div class="i">' + esc(f.name) +
+      "<div>Copied into Lektra ✓" + (f.size ? " · " + fmtSize(f.size) : "") + '</div></div>' +
+      '<button class="x" data-i="' + i + '" aria-label="Delete file">✕</button></div>';
   });
   html += '<button class="add" id="pick">+ Add lecture files</button><input type="file" id="file" multiple style="display:none">';
-  if (s.files.length) html += '<div class="muted" style="margin-top:3cqw">' + s.files.length + " file" + (s.files.length > 1 ? "s" : "") + (total ? " · " + fmtSize(total) : "") + "</div>";
+  if (s.files.length) html += '<div class="muted" style="margin-top:3cqw">' + s.files.length + " file" + (s.files.length > 1 ? "s" : "") + (total ? " · " + fmtSize(total) : "") + " · the originals can be deleted</div>";
   main.innerHTML = html;
   main.scrollTop = 0;
   document.getElementById("back").onclick = function () { openId = null; render(); };
@@ -159,7 +337,7 @@ function renderFolder(main, s) {
   });
 
   main.querySelectorAll("[data-open]").forEach(function (r) {
-    r.onclick = function () { openStoredFile(s.files[+r.getAttribute("data-open")].id); };
+    r.onclick = function () { openFilePreview(s.files[+r.getAttribute("data-open")].id); };
   });
   main.querySelectorAll("[data-i]").forEach(function (b) {
     holdToConfirm(b, 800, function () {
@@ -176,9 +354,12 @@ function renderFolder(main, s) {
     input.value = "";   // picking the same file again should fire change
     if (!files.length) return;
     var saved = 0, failed = 0;
-    toast("Saving " + files.length + " file" + (files.length > 1 ? "s" : "") + "…");
+    toast("Copying " + files.length + " file" + (files.length > 1 ? "s" : "") + "…");
     Promise.all(files.map(function (file) {
-      return putFile(s.id, file).then(function (rec) {
+      // The thumbnail is best-effort: a file we cannot decode still gets saved.
+      return makeFileThumb(file).then(function (thumb) {
+        return putFile(s.id, file, thumb);
+      }).then(function (rec) {
         s.files.push({ id: rec.id, name: rec.name, size: rec.size, type: rec.type });
         saved++;
       }).catch(function () {
@@ -187,7 +368,9 @@ function renderFolder(main, s) {
       });
     })).then(function () {
       save(); render();
-      if (saved) toast(failed ? "Saved " + saved + " of " + files.length + " files" : "Saved on this device ✓");
+      if (saved) toast(failed ? "Copied " + saved + " of " + files.length + " files" : "Copied into Lektra ✓");
     });
   };
+
+  loadFolderThumbs(main, s);
 }

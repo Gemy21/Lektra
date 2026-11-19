@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
-"""Bump the Lektra build number everywhere it has to agree.
+"""Bump the Lektra version everywhere it has to agree.
 
 One command replaces the old "remember to edit two files" checklist:
 
-    python3 tools/bump-version.py            # v191 -> v192
-    python3 tools/bump-version.py --set 200  # jump to v200
+    python3 tools/bump-version.py            # 2.1 -> 2.2
+    python3 tools/bump-version.py --set 2.3  # jump to 2.3
     python3 tools/bump-version.py --check    # are all files in sync?
+
+Versions are plain numbers separated by dots. The last part is the one that
+steps by default, so 2.1 -> 2.2 and 2.1.3 -> 2.1.4. A leading "v" is accepted
+and dropped, so "v2.2" is the same version as "2.2".
 
 It rewrites
 
     js/main.js      APP_BUILD            (shown in Settings -> More)
     sw.js           BUILD                (CACHE and V are derived from it)
     version.json    build                (the live update probe)
-    index.html      css/style.css + js/*.js -> ?v=vN
-    js/scan.js      js/scan-worker.js    -> ?v=vN
-    README.md       the build label in the header and footer
+    index.html      css/style.css + js/*.js -> ?v=<version>
+    js/scan.js      js/scan-worker.js    -> ?v=<version>
+    README.md       the version label in the header and footer
 
 Why every file: a new cache name alone is not enough. GitHub Pages sits behind
 a CDN that may keep an old file for ~10 minutes, so each build must also have a
@@ -29,6 +33,9 @@ import re
 import sys
 
 ROOT = Path(__file__).resolve().parent.parent
+
+VERSION_RE = r"\d+(?:\.\d+)*"
+VERSION_TOKEN_RE = r"(?<![\w.])" + VERSION_RE + r"(?![\w.])"
 
 MAIN_JS = "js/main.js"
 SW_JS = "sw.js"
@@ -54,9 +61,9 @@ def fail(message):
 
 
 def current_build():
-    match = re.search(r'var\s+APP_BUILD\s*=\s*"(v\d+)"', read(MAIN_JS))
+    match = re.search(r'var\s+APP_BUILD\s*=\s*"([^"]+)"', read(MAIN_JS))
     if not match:
-        fail("cannot find `var APP_BUILD = \"vNNN\";` in " + MAIN_JS)
+        fail('cannot find `var APP_BUILD = "<version>";` in ' + MAIN_JS)
     return match.group(1)
 
 
@@ -64,9 +71,15 @@ def parse_build(value):
     raw = str(value).strip()
     if raw.lower().startswith("v"):
         raw = raw[1:]
-    if not raw.isdigit() or int(raw) <= 0:
-        fail("build must be a positive number such as 192 or v192")
-    return "v" + str(int(raw))
+    if not re.fullmatch(VERSION_RE, raw):
+        fail("version must be numbers separated by dots, such as 2.1 or 2.1.1")
+    return raw
+
+
+def next_build(build):
+    parts = build.split(".")
+    parts[-1] = str(int(parts[-1]) + 1)
+    return ".".join(parts)
 
 
 def replace_once(text, pattern, replacement, label):
@@ -99,13 +112,18 @@ def version_scan(js, build):
     )
 
 
-def version_readme(text, build):
-    # Only the two build labels: a `· vNNN` token in the header/footer.
-    return re.sub(r"(\bv)\d{3,4}\b", build, text)
+def version_readme(text, old, build):
+    # Only the version labels: the header and footer both carry one.
+    return re.sub(
+        r"(?<![\w.])" + re.escape(old) + r"(?![\w.])",
+        build,
+        text,
+    )
 
 
 def apply_build(build):
     changed = []
+    old_build = current_build()
 
     def update(rel, new):
         try:
@@ -120,7 +138,7 @@ def apply_build(build):
         MAIN_JS,
         replace_once(
             read(MAIN_JS),
-            r'(var\s+APP_BUILD\s*=\s*")(v\d+)(")',
+            r'(var\s+APP_BUILD\s*=\s*")([^"]+)(")',
             lambda m: m.group(1) + build + m.group(3),
             "APP_BUILD in " + MAIN_JS,
         ),
@@ -129,14 +147,14 @@ def apply_build(build):
         SW_JS,
         replace_once(
             read(SW_JS),
-            r'(var\s+BUILD\s*=\s*")(v\d+)(")',
+            r'(var\s+BUILD\s*=\s*")([^"]+)(")',
             lambda m: m.group(1) + build + m.group(3),
             "BUILD in " + SW_JS,
         ),
     )
     update(INDEX_HTML, version_index(read(INDEX_HTML), build))
     update(SCAN_JS, version_scan(read(SCAN_JS), build))
-    update(README, version_readme(read(README), build))
+    update(README, version_readme(read(README), old_build, build))
 
     version_file = '{\n  "build": "%s"\n}\n' % build
     update(VERSION_JSON, version_file)
@@ -148,7 +166,7 @@ def collect_issues():
     issues = []
     build = current_build()
 
-    sw = re.search(r'var\s+BUILD\s*=\s*"(v\d+)"', read(SW_JS))
+    sw = re.search(r'var\s+BUILD\s*=\s*"([^"]+)"', read(SW_JS))
     if not sw:
         issues.append(SW_JS + ": BUILD not found")
     elif sw.group(1) != build:
@@ -176,20 +194,21 @@ def collect_issues():
     if not worker or worker.group(1) != "?v=" + build:
         issues.append(SCAN_JS + ": scan-worker.js is not versioned ?v=" + build)
 
-    labels = set(re.findall(r"\bv\d{3,4}\b", read(README)))
-    if labels != {build}:
+    labels = set(re.findall(VERSION_TOKEN_RE, read(README)))
+    # The README's prose carries plenty of other numbers, so only check that the
+    # version label is present at all; the header and footer copies are the ones
+    # apply_build rewrites.
+    if build not in labels:
         issues.append(
-            README + ": build labels are " +
-            (", ".join(sorted(labels)) if labels else "missing") +
-            ", APP_BUILD is " + build
+            README + ": version label " + build + " is missing"
         )
 
     return build, issues
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Bump the Lektra build number.")
-    parser.add_argument("--set", metavar="BUILD", help="set an exact build, e.g. 192 or v192")
+    parser = argparse.ArgumentParser(description="Bump the Lektra version.")
+    parser.add_argument("--set", metavar="VERSION", help="set an exact version, e.g. 2.2")
     parser.add_argument("--check", action="store_true", help="only verify that every file agrees")
     parser.add_argument("--quiet", action="store_true", help="print nothing on a successful bump")
     args = parser.parse_args()
@@ -197,17 +216,17 @@ def main():
     if args.check:
         build, issues = collect_issues()
         if issues:
-            print("Build check failed (APP_BUILD is " + build + "):", file=sys.stderr)
+            print("Version check failed (APP_BUILD is " + build + "):", file=sys.stderr)
             for issue in issues:
                 print("  - " + issue, file=sys.stderr)
             print("\nRun: python3 tools/bump-version.py", file=sys.stderr)
             return 1
         if not args.quiet:
-            print("All build markers agree on " + build + ".")
+            print("All version markers agree on " + build + ".")
         return 0
 
     old = current_build()
-    build = parse_build(args.set) if args.set else "v" + str(int(old[1:]) + 1)
+    build = parse_build(args.set) if args.set else next_build(old)
 
     changed = apply_build(build)
     _, issues = collect_issues()
