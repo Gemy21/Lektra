@@ -249,8 +249,97 @@ function loadFolderThumbs(main, s) {
 }
 
 var filePreviewUrl = "";
+var previewSeq = 0;
+
+// ===== PDF preview =====
+// iOS Safari draws a PDF handed to an <iframe> as one tiny page that cannot be
+// scrolled or zoomed, which is why the old preview looked broken on a phone.
+// Instead the pages are drawn onto <canvas> by a vendored PDF.js (vendor/pdfjs)
+// at the container width times the screen density: sharp on a phone, scrollable
+// inside the sheet, and identical on Android and desktop. It is loaded on the
+// first PDF preview and served from the app cache, so it also works offline.
+var PDFJS_URL = "vendor/pdfjs/pdf.min.js";
+var PDFJS_WORKER = "vendor/pdfjs/pdf.worker.min.js";
+var PDF_PREVIEW_PAGES = 8;       // enough to judge a handout; "Open file" has the rest
+var pdfjsReady = null;
+var pdfDoc = null;
+
+function loadPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (pdfjsReady) return pdfjsReady;
+  pdfjsReady = new Promise(function (resolve, reject) {
+    var s = document.createElement("script");
+    s.src = PDFJS_URL;
+    s.async = true;
+    s.onload = function () {
+      if (!window.pdfjsLib) { reject(new Error("pdf.js missing")); return; }
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+      resolve(window.pdfjsLib);
+    };
+    s.onerror = function () { reject(new Error("pdf.js failed to load")); };
+    document.head.appendChild(s);
+  }).catch(function (err) {
+    pdfjsReady = null;           // a later tap may still succeed (network back)
+    throw err;
+  });
+  return pdfjsReady;
+}
+
+function blobBuffer(blob) {
+  if (blob.arrayBuffer) return blob.arrayBuffer();
+  return new Promise(function (resolve, reject) {
+    var r = new FileReader();
+    r.onload = function () { resolve(r.result); };
+    r.onerror = function () { reject(r.error); };
+    r.readAsArrayBuffer(blob);
+  });
+}
+
+// One canvas per page, in order, so a slow page never reorders the sheet. Every
+// step checks the preview sequence: closing the sheet (or opening another file)
+// stops the work and leaves nothing behind.
+function paintPdfPages(doc, host, seq) {
+  var shown = Math.min(doc.numPages, PDF_PREVIEW_PAGES);
+  var width = Math.max(200, host.clientWidth || 300);
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var chain = Promise.resolve();
+
+  for (var p = 1; p <= shown; p++) {
+    chain = chain.then(function (pageNo) {
+      return function () {
+        if (seq !== previewSeq) return;
+        return doc.getPage(pageNo).then(function (page) {
+          if (seq !== previewSeq) return;
+          var base = page.getViewport({ scale: 1 });
+          var view = page.getViewport({ scale: (width / base.width) * dpr });
+          var canvas = document.createElement("canvas");
+          canvas.className = "pvpage";
+          canvas.width = Math.max(1, Math.round(view.width));
+          canvas.height = Math.max(1, Math.round(view.height));
+          var ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          return page.render({ canvasContext: ctx, viewport: view }).promise.then(function () {
+            if (seq === previewSeq) host.appendChild(canvas);
+            try { page.cleanup(); } catch (e) {}
+          });
+        });
+      };
+    }(p));
+  }
+
+  return chain.then(function () {
+    if (seq !== previewSeq || doc.numPages <= shown) return;
+    var note = document.createElement("div");
+    note.className = "pvmore";
+    note.textContent = "First " + shown + " of " + doc.numPages + " pages · open the file for the rest";
+    host.appendChild(note);
+  });
+}
 
 function revokeFilePreview() {
+  previewSeq++;                  // anything still rendering is now stale
+  if (pdfDoc) { try { pdfDoc.destroy(); } catch (e) {} pdfDoc = null; }
   if (!filePreviewUrl) return;
   try { URL.revokeObjectURL(filePreviewUrl); } catch (e) {}
   filePreviewUrl = "";
@@ -263,12 +352,12 @@ function openFilePreview(id) {
   getFile(id).then(function (rec) {
     if (!rec || !rec.blob) { toast("File not found"); return; }
     revokeFilePreview();
-    var url = URL.createObjectURL(rec.blob);
-    filePreviewUrl = url;
+    var seq = previewSeq;
     var name = rec.name || "File";
     var type = rec.type || "";
     var isPdf = type === "application/pdf" || /\.pdf$/i.test(name);
     var isText = /^text\//.test(type) || /\.(txt|md|csv|json|log)$/i.test(name);
+    var url = "";
     var view;
 
     function noPreview() {
@@ -280,7 +369,7 @@ function openFilePreview(id) {
       openModal(
         '<h2 class="pvtitle">' + esc(name) + "</h2>" +
         '<div class="pvbox' + (isPdf ? " pdf" : "") + '">' + view + "</div>" +
-        '<div class="pvmeta">' + (rec.size ? fmtSize(rec.size) + " · " : "") + "Saved in Lektra ✓</div>" +
+        '<div class="pvmeta" id="pvMeta">' + (rec.size ? fmtSize(rec.size) + " · " : "") + "Saved in Lektra ✓</div>" +
         '<button class="add" id="pvOpen" type="button">Open file</button>'
       );
       var openBtn = document.getElementById("pvOpen");
@@ -288,16 +377,44 @@ function openFilePreview(id) {
     }
 
     if (isImageFile(name, type)) {
+      url = URL.createObjectURL(rec.blob);
+      filePreviewUrl = url;
       view = '<img class="pvimg" src="' + url + '" alt="">';
       show();
       return;
     }
+
     if (isPdf) {
-      view = '<iframe class="pvframe" src="' + url + '#toolbar=0&navpanes=0&view=FitH" title="' +
-        esc(name) + '"></iframe>';
+      // Draw the sheet immediately, then fill it page by page.
+      view = '<div class="pvpages" id="pvPages"><div class="pvload">Drawing the pages…</div></div>';
       show();
+      loadPdfJs().then(function (pdfjs) {
+        return blobBuffer(rec.blob).then(function (buf) {
+          return pdfjs.getDocument({ data: new Uint8Array(buf) }).promise;
+        });
+      }).then(function (doc) {
+        if (seq !== previewSeq) { try { doc.destroy(); } catch (e) {} return; }
+        pdfDoc = doc;
+        var meta = document.getElementById("pvMeta");
+        if (meta) {
+          meta.textContent = doc.numPages + " page" + (doc.numPages === 1 ? "" : "s") +
+            (rec.size ? " · " + fmtSize(rec.size) : "") + " · Saved in Lektra ✓";
+        }
+        var host = document.getElementById("pvPages");
+        if (!host) return;
+        host.innerHTML = "";
+        return paintPdfPages(doc, host, seq);
+      }).catch(function () {
+        if (seq !== previewSeq) return;
+        var host = document.getElementById("pvPages");
+        if (host) {
+          host.innerHTML = '<div class="pvnone"><span class="fthumb"><span class="ftag">PDF</span></span>' +
+            "<span>Could not draw this PDF here.<br>Open it to view the document.</span></div>";
+        }
+      });
       return;
     }
+
     if (isText && rec.blob.text) {
       rec.blob.text().then(function (t) {
         view = '<pre class="pvtext">' + esc(String(t || "").slice(0, 20000)) + "</pre>";

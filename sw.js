@@ -5,7 +5,7 @@
 // fetched together into one cache, and the GitHub Pages CDN can never slip an
 // old file into a new build. `tools/bump-version.py` keeps BUILD, APP_BUILD,
 // index.html and version.json in sync, so this is one command, not a checklist.
-var BUILD = "2.2";                 // keep in sync with APP_BUILD (js/main.js)
+var BUILD = "2.3";                 // keep in sync with APP_BUILD (js/main.js)
 var CACHE = "lektra-" + BUILD;
 var V = "?v=" + BUILD;
 
@@ -52,7 +52,9 @@ var CODE = [
 ].map(abs).map(function (url) { return url + V; });
 
 // Pictures and the font are not code. If one of them fails to cache the app is
-// still usable, so a cosmetic 404 must never block a whole update.
+// still usable, so a cosmetic 404 must never block a whole update. PDF.js is
+// here rather than in CODE: it is 1.5 MB, only needed when a PDF is previewed,
+// and a failed copy merely costs that preview (the sheet says so).
 var MEDIA = [
   "./manifest.json",
   "./assets/fonts/nunito-latin.woff2",
@@ -60,7 +62,9 @@ var MEDIA = [
   "./assets/icon-192.png",
   "./assets/icon-512.png",
   "./assets/icon-maskable-512.png",
-  "./assets/apple-touch-icon.png"
+  "./assets/apple-touch-icon.png",
+  "./vendor/pdfjs/pdf.min.js",
+  "./vendor/pdfjs/pdf.worker.min.js"
 ].map(abs);
 
 function fetchFresh(url, tries) {
