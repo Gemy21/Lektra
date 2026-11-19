@@ -618,15 +618,15 @@ button.cam-thumb{cursor:pointer;-webkit-tap-highlight-color:transparent}
 /* the preview sheet behind a file row */
 .pvtitle{margin:4.6cqw 0 2.6cqw;font-size:4.6cqw;line-height:1.25;word-break:break-word}
 .pvbox{display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:4cqw;border:1px solid var(--line-soft);background:var(--f05);min-height:22cqw}
-.pvimg{display:block;width:100%;max-height:52cqw;object-fit:contain}
+.pvimg{display:block;width:100%;max-height:40cqw;object-fit:contain}
 /* PDFs are drawn by PDF.js, one canvas per page: an iframe of a blob made
    Safari show a single tiny page that could not be scrolled on a phone. */
 .pvbox.pdf{display:block;padding:0;border:0;background:transparent;min-height:0}
-.pvpages{display:flex;flex-direction:column;gap:2.2cqw;max-height:58vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:1cqw 0 0}
+.pvpages{display:flex;flex-direction:column;gap:2.2cqw;max-height:40vh;max-height:40dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:1cqw 0 0}
 .pvpage{display:block;width:100%;height:auto;border-radius:2.4cqw;background:#fff;box-shadow:0 .6cqw 2.6cqw rgba(0,0,0,.34)}
 .pvload{display:flex;align-items:center;justify-content:center;min-height:34cqw;color:var(--t5);font-size:3cqw}
 .pvmore{color:var(--t6);font-size:2.7cqw;line-height:1.45;text-align:center;padding:1.6cqw 0 2.4cqw}
-.pvtext{margin:0;padding:3.4cqw;width:100%;max-height:52cqw;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:2.9cqw;line-height:1.55;color:var(--t2);text-align:left}
+.pvtext{margin:0;padding:3.4cqw;width:100%;max-height:38cqw;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:2.9cqw;line-height:1.55;color:var(--t2);text-align:left}
 .pvmeta{color:var(--t5);font-size:2.9cqw;margin:2.8cqw 0 1.4cqw}
 .pvnone{display:flex;flex-direction:column;align-items:center;gap:2.4cqw;padding:7cqw 4cqw;color:var(--t5);font-size:3cqw;line-height:1.5;text-align:center}
 .pvnone .fthumb{width:13cqw;height:13cqw;border-radius:3.4cqw}

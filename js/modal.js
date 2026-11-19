@@ -47,15 +47,29 @@ function resetDrag(box) {
   box.style.transform = "";
   box.style.transition = "";
 }
+// The nearest element between the touch and the sheet that scrolls on its own
+// (a PDF's page list, a long text file). A gesture there belongs to that
+// scroller: dragging up at its top is not a request to close the sheet.
+function nestedScroller(target, box) {
+  var el = target && target.nodeType === 1 ? target : null;
+  while (el && el !== box) {
+    var y = window.getComputedStyle(el).overflowY;
+    if ((y === "auto" || y === "scroll") && el.scrollHeight > el.clientHeight + 2) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
 // slide the sheet down with the finger and dismiss it
 function dragToClose(box) {
   if (box._dragBound) return;
   box._dragBound = true;
   var sy = 0, dy = 0, active = false;
   box.addEventListener("touchstart", function (e) {
+    if (!e.touches.length) { active = false; return; }
+    if (nestedScroller(e.target, box)) { active = false; return; }
     var scroller = box.querySelector(".fscroll");
     var top = scroller ? scroller.scrollTop : box.scrollTop;
-    if (top > 0 || !e.touches.length) { active = false; return; }
+    if (top > 0) { active = false; return; }
     sy = e.touches[0].clientY; dy = 0; active = true;
     box.style.transition = "none";
   }, { passive: true });
