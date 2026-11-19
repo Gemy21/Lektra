@@ -204,6 +204,14 @@ body{display:flex;justify-content:center;align-items:center}
 @media (min-width:560px){html,body{background:var(--bg)}#app{height:min(100%,900px);border-radius:48px;border:6px solid #2b2b2e;contain:layout}}
 #screen{height:100%;display:flex;flex-direction:column;padding:calc(5cqw + var(--safe-top)) 5cqw calc(4cqw + var(--safe-bottom));position:relative}
 .handle{width:9cqw;height:1cqw;border-radius:1cqw;background:var(--line-2);margin:0 auto;flex:none}
+/* The top handle is also the pull-to-review-months grip. An invisible pseudo
+   gives the 1cqw bar a finger-sized target without changing its size, its
+   position or the layout; the only visible movement is a short follow while a
+   pull is actually in progress. touch-action keeps a pull from scrolling the
+   page behind it. */
+#topHandle{position:relative;touch-action:none;transition:transform .22s cubic-bezier(.2,.9,.25,1)}
+#topHandle::after{content:"";position:absolute;top:-7cqw;left:50%;width:46cqw;height:9cqw;transform:translateX(-50%);z-index:3;touch-action:none}
+#topHandle.pulling{transition:none;transform:translateY(var(--pull,0px))}
 .round{width:12.4cqw;height:12.4cqw;border-radius:50%;border:1px solid var(--line);background:var(--f06);box-shadow:inset 0 1px 0 var(--bevel),inset 0 -1px 0 var(--shade);color:var(--t3);cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;padding:0}
 .round svg{width:5.4cqw;height:5.4cqw}
 .round.on{background:var(--f14);color:var(--t1)}
